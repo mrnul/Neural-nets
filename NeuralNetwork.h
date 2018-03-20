@@ -1,7 +1,7 @@
 #pragma once
 
 #include <MyHeaders\Matrix.h>
-#include <MyHeaders\File.h>
+#include <fstream>
 
 class NeuralNetwork
 {
@@ -17,6 +17,9 @@ class NeuralNetwork
 
 		//each neuron's delta
 		vector<vector<double>> D;
+
+		//to shuffle the index vector
+		UniformIntRandom rnd;
 
 		vector<Matrix> DMatrices;
 		vector<unsigned int> Index;
@@ -37,8 +40,8 @@ class NeuralNetwork
 		double Accuracy(const vector<vector<double>> & inputs, const vector<vector<double>> & targets);
 		double Error(const vector<vector<double>> &inputs, const vector<vector<double>> & targets);
 		void SetMatrices(const vector<Matrix> & m);
-		unsigned int WriteWeightsToFile(const TCHAR	*path) const;
-		unsigned int LoadWeightsFromFile(const TCHAR *path);
+		bool WriteWeightsToFile(const char *path) const;
+		bool LoadWeightsFromFile(const char *path);
 
 		void Train(const vector<vector<double>> &inputs, const vector<vector<double>> & targets, const double rate, const unsigned int parts = 1);
 };

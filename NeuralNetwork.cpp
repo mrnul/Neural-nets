@@ -141,6 +141,7 @@ const vector<double> & NeuralNetwork::FeedForward(const vector<double> & input)
 	for (unsigned int i = 0; i < input.size(); i++)
 		O[0][i] = input[i];
 
+
 	const unsigned int lastIndex = Matrices.size() - 1;
 	unsigned int m = 1;
 	while (true)
@@ -211,58 +212,40 @@ void NeuralNetwork::SetMatrices(const vector<Matrix> & m)
 	Matrices = m;
 }
 
-unsigned int NeuralNetwork::WriteWeightsToFile(const TCHAR * path) const
+bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 {
-	File out;
-	if (!out.Open(path, file::access::Write, file::share::Read, file::openmode::CreateAlways, file::flag::SeqAccess))
-		return 0;
+	std::ofstream file(path, std::ios::out | std::ios::binary);
+	if (!file.is_open())
+		return false;
 
-	unsigned int totSize = 0;
 	const unsigned int matricesCount = Matrices.size();
 	for (unsigned int m = 1; m < matricesCount; m++)
 	{
 		const unsigned int curSize = Matrices[m].WeightsCount() * sizeof(double);
-		if (out.Write(Matrices[m].Data(), curSize) != curSize)
-			return 0;
-
-		totSize += curSize;
+		file.write((const char*)Matrices[m].Data(), curSize);
 	}
 
-	return totSize;
+	return true;
 }
 
-unsigned int NeuralNetwork::LoadWeightsFromFile(const TCHAR * path)
+bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 {
-	File in;
-	if (!in.Open(path, file::access::Read, file::share::Read, file::openmode::OpenExisting, file::flag::SeqAccess))
-		return 0;
+	std::ifstream file(path, std::ios::in | std::ios::binary);
+	if (!file.is_open())
+		return false;
 
-	const unsigned int NumOfWeightsInFile = (unsigned int)in.GetSize() / sizeof(double);
-
-	unsigned int totWeights = 0;
 	const unsigned int matricesCount = Matrices.size();
 	for (unsigned int m = 1; m < matricesCount; m++)
-		totWeights += Matrices[m].WeightsCount();
-
-	if (NumOfWeightsInFile != totWeights)
-		return 0;
-
-	vector<double> fileData(NumOfWeightsInFile);
-
-	if (in.Read(&fileData[0], fileData.size() * sizeof(double)) != fileData.size() * sizeof(double))
-		return 0;
-
-	unsigned int pos = 0;
-	for (unsigned int m = 1; m < matricesCount; m++)
 	{
-		const unsigned int weightsCount = Matrices[m].WeightsCount();
-		for (unsigned int w = 0; w < weightsCount; w++)
+		const unsigned int matricesCount = Matrices.size();
+		for (unsigned int m = 1; m < matricesCount; m++)
 		{
-			Matrices[m].Set(w, fileData[pos++]);
+			const unsigned int curSize = Matrices[m].WeightsCount() * sizeof(double);
+			file.read((char*)Matrices[m].Data(), curSize);
 		}
 	}
 
-	return pos * sizeof(double);
+	return true;
 }
 
 void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<vector<double>>& targets, const double rate, const unsigned int parts)
@@ -280,7 +263,7 @@ void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<ve
 	{
 		for (unsigned int i = Index.size() - 1; i > 0; i--)
 		{
-			UniformIntRandom rnd(0, i);
+			rnd.SetParams(0, i);
 			std::swap(Index[i], Index[rnd()]);
 		}
 	}
@@ -302,8 +285,6 @@ void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<ve
 			FeedForward(inputs[Index[i]]);
 
 			//delta for output
-			//checked only for one output neuron
-			//probably won't work for multiple outputs
 			for (unsigned int j = 0; j < O[L].size(); j++)
 				D[L][j] = 2 * Derivative(O[L][j]) * (O[L][j] - targets[Index[i]][j]);
 
@@ -317,6 +298,7 @@ void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<ve
 						sum += Matrices[l].Element(j, q) * D[l][q];
 
 					D[l - 1][j] = 2 * Derivative(O[l - 1][j]) * sum;
+					
 				}
 			}
 
