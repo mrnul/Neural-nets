@@ -237,12 +237,8 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 	const unsigned int matricesCount = Matrices.size();
 	for (unsigned int m = 1; m < matricesCount; m++)
 	{
-		const unsigned int matricesCount = Matrices.size();
-		for (unsigned int m = 1; m < matricesCount; m++)
-		{
-			const unsigned int curSize = Matrices[m].WeightsCount() * sizeof(double);
-			file.read((char*)Matrices[m].Data(), curSize);
-		}
+		const unsigned int curSize = Matrices[m].WeightsCount() * sizeof(double);
+		file.read((char*)Matrices[m].Data(), curSize);
 	}
 
 	return true;
