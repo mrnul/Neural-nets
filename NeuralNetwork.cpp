@@ -17,7 +17,6 @@ void NeuralNetwork::Initialize(const vector<unsigned int> topology, const double
 	const unsigned int numOfLayers = topology.size();
 	const unsigned int lastIndex = numOfLayers - 1;
 
-	Net.resize(numOfLayers);
 	D.resize(numOfLayers);
 	O.resize(numOfLayers);
 	Matrices.resize(numOfLayers);
@@ -39,9 +38,8 @@ void NeuralNetwork::Initialize(const vector<unsigned int> topology, const double
 
 	for (unsigned int i = 1; i < numOfLayers; i++)
 	{
-		//these two don't need a bias node
+		//D don't need a bias node
 		D[i].resize(topology[i]);
-		Net[i].resize(topology[i]);
 
 		//+1 for the bias of the prev layer
 		//initialize Matrices with random numbers
@@ -78,87 +76,22 @@ Matrix & NeuralNetwork::operator[](unsigned int layer)
 	return Matrices[layer];
 }
 
-const vector<double> & NeuralNetwork::Evaluate(vector<double> input)
-{
-	const unsigned int mCount = Matrices.size();
-	unsigned int m = 1;
-
-	//bias node goes last
-	input.push_back(1);
-
-	while(true)
-	{
-		Result.resize(Matrices[m].OutputCount());
-		VectorMatrixProduct(input, Matrices[m], Result);
-
-		if (++m == mCount)
-			break;
-
-		input.resize(Result.size() + 1);
-		
-		for (unsigned int i = 0; i < Result.size(); i++)
-			input[i] = ActivationFunction(Result[i]);
-
-		input.back() = 1;
-	}
-
-	for (unsigned int i = 0; i < Result.size(); i++)
-		Result[i] = ActivationFunction(Result[i]);
-
-	return Result;
-}
-
-void NeuralNetwork::Evaluate(vector<double> input, vector<double> & output) const
-{
-	const unsigned int mCount = Matrices.size();
-	unsigned int m = 1;
-
-	//bias node goes last
-	input.push_back(1);
-
-	while (true)
-	{
-		output.resize(Matrices[m].OutputCount());
-		VectorMatrixProduct(input, Matrices[m], output);
-
-		if (++m == mCount)
-			break;
-
-		input.resize(output.size() + 1);
-		
-		for (unsigned int i = 0; i < output.size(); i++)
-			input[i] = ActivationFunction(output[i]);
-
-		input.back() = 1;
-	}
-
-	for (unsigned int i = 0; i < output.size(); i++)
-		output[i] = ActivationFunction(output[i]);
-}
-
 const vector<double> & NeuralNetwork::FeedForward(const vector<double> & input)
 {
 	for (unsigned int i = 0; i < input.size(); i++)
 		O[0][i] = input[i];
 
-
-	const unsigned int lastIndex = Matrices.size() - 1;
-	unsigned int m = 1;
-	while (true)
+	for (unsigned int m = 1; m < Matrices.size(); m++)
 	{
-		VectorMatrixProduct(O[m - 1], Matrices[m], Net[m]);
+		VectorMatrixProduct(O[m - 1], Matrices[m], O[m]);
 
-		if (m == lastIndex)
-			break;
-
-		for (unsigned int i = 0; i < Net[m].size(); i++)
-			O[m][i] = ActivationFunction(Net[m][i]);
-
-		m++;
+		//don't activate the last neuron, it is the bias node
+		for (unsigned int i = 0; i < O[m].size() - 1; i++)
+			O[m][i] = ActivationFunction(O[m][i]);
 	}
-
-	for (unsigned int i = 0; i < Net.back().size(); i++)
-		O.back()[i] = ActivationFunction(Net.back()[i]);
+	
+	//for the output layer the last neuron is not a bias, activate it
+	O.back().back() = ActivationFunction(O.back().back());
 
 	return O.back();
 }
@@ -169,11 +102,11 @@ double NeuralNetwork::Accuracy(const vector<vector<double>> & inputs, const vect
 	
 	for (unsigned int i = 0; i < inputs.size(); i++)
 	{
-		Evaluate(inputs[i]);
+		FeedForward(inputs[i]);
 		bool allCorrect = true;
-		for (unsigned int r = 0; r < Result.size(); r++)
+		for (unsigned int r = 0; r < O.back().size(); r++)
 		{
-			if (abs(targets[i][r] - Result[r]) >= 0.5)
+			if (abs(targets[i][r] - O.back()[r]) > 0.5)
 			{
 				allCorrect = false;
 				break;
@@ -193,13 +126,13 @@ double NeuralNetwork::Error(const vector<vector<double>> &inputs, const vector<v
 	double ret = 0;
 	for (unsigned int i = 0; i < inputCount; i++)
 	{
-		Evaluate(inputs[i]);
+		FeedForward(inputs[i]);
 
-		const unsigned int resSize = Result.size();
+		const unsigned int resSize = O.back().size();
 
 		double error = 0;
 		for (unsigned int k = 0; k < resSize; k++)
-			error += (targets[i][k] - Result[k]) * (targets[i][k] - Result[k]);
+			error += (targets[i][k] - O.back()[k]) * (targets[i][k] - O.back()[k]);
 
 		ret += error;
 	}
@@ -244,7 +177,7 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 	return true;
 }
 
-void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<vector<double>>& targets, const double rate, const unsigned int parts)
+void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<vector<double>> & targets, const double rate, const unsigned int parts)
 {
 	//resize if needed
 	if (Index.size() != inputs.size())
