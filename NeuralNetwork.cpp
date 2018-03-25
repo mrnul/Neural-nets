@@ -250,7 +250,7 @@ void NeuralNetwork::Train(const vector<vector<double>> & inputs, const vector<ve
 			{
 				for (unsigned int r = 0; r < Grad[l].rows(); r++)
 				{
-					Grad[l].row(r).noalias() += rate * O[l - 1][r] * D[l];
+					Grad[l].row(r).noalias() += rate * (O[l - 1][r] * D[l]);
 				}
 			}
 		}
@@ -307,9 +307,9 @@ void NeuralNetwork::TrainRprop(const vector<vector<double>>& inputs, const vecto
 			{
 				const int sign = Sign(Grad[l](w) * PrevGrad[l](w));
 				if (sign > 0)
-					Delta[l](w) = fmin(abs(Delta[l](w)) * 1.2, 50.0);
+					Delta[l](w) = fmin(Delta[l](w) * 1.2, 50.0);
 				else if (sign < 0)
-					Delta[l](w) = fmax(abs(Delta[l](w)) * 0.5, 1e-12);
+					Delta[l](w) = fmax(Delta[l](w) * 0.5, 1e-10);
 
 				Matrices[l](w) -= Sign(Grad[l](w)) * Delta[l](w);
 			}
