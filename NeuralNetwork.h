@@ -7,51 +7,55 @@
 #include <iostream>
 #include <ctime>
 using std::vector;
-using Eigen::MatrixXd;
-using Eigen::RowVectorXd;
+using Eigen::MatrixXf;
+using Eigen::RowVectorXf;
 
 
-void NormalizeVector(vector<double> & vec, const double a = 0, const double b = 1);
-int Sign(const double x);
+void NormalizeVector(vector<float> & vec, const float a = 0, const float b = 1);
+int Sign(const float x);
 
 class NeuralNetwork
 {
 	private:
 		//each layer's matrix
-		vector<MatrixXd> Matrices;
+		vector<MatrixXf> Matrices;
 
 		//each layer's excitation
-		vector<RowVectorXd> Ex;
+		vector<RowVectorXf> Ex;
 
 		//each neuron's output
-		vector<RowVectorXd> O;
+		vector<RowVectorXf> O;
 
 		//each neuron's delta
-		vector<RowVectorXd> D;
+		vector<RowVectorXf> D;
 
 		//to shuffle the index vector
 		UniformIntRandom rnd;
 
-		vector<MatrixXd> Grad;
+		vector<MatrixXf> Grad;
 		//previous grad for rprop
-		vector<MatrixXd> PrevGrad;
+		vector<MatrixXf> PrevGrad;
 		//delta for rprop
-		vector<MatrixXd> Delta;
+		vector<MatrixXf> Delta;
+		//to shuffle inputs
 		vector<unsigned int> Index;
 	public:
 		NeuralNetwork();
 		NeuralNetwork(const vector<unsigned int> topology);
-		static double ActivationFunction(const double x);
-		static double Derivative(const double x);
+		static float Activation(const float x);
+		static float Derivative(const float x);
+		static float OutActivation(const float x);
+		static float OutDerivative(const float x);
 		void Initialize(const vector<unsigned int> topology);
-		MatrixXd & operator[](unsigned int layer);
-		const RowVectorXd & FeedForward(const vector<double> & input);
-		double Accuracy(const vector<vector<double>> & inputs, const vector<vector<double>> & targets);
-		double Error(const vector<vector<double>> &inputs, const vector<vector<double>> & targets, const double CutOff = INFINITY);
-		void SetMatrices(const vector<MatrixXd> & m);
+		MatrixXf & operator[](int layer);
+		const RowVectorXf & FeedForward(const vector<float> & input);
+		const RowVectorXf & Evaluate(const vector<float> & input);
+		float Accuracy(const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
+		float SquareError(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float CutOff = INFINITY);
+		void SetMatrices(const vector<MatrixXf> & m);
 		bool WriteWeightsToFile(const char *path) const;
 		bool LoadWeightsFromFile(const char *path);
 
-		void Train(const vector<vector<double>> &inputs, const vector<vector<double>> & targets, const double rate, unsigned int batchSize = 0);
-		void TrainRprop(const vector<vector<double>> &inputs, const vector<vector<double>> & targets, const unsigned int epochs = 1);
+		bool Train(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float rate, unsigned int batchSize = 0);
+		bool TrainRprop(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const unsigned int epochs = 1);
 };
