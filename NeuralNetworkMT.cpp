@@ -54,8 +54,8 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 	Threads.resize(threads);
 	for (int i = 0; i < threads; i++)
 	{
-		Threads[i] = thread(NeuralNetworkThread, std::ref(Data[i]), std::cref(Master));
 		Data[i].nn.Initialize(Topology);
+		Threads[i] = thread(NeuralNetworkThread, std::ref(Data[i]), std::cref(Master));
 	}	
 }
 
