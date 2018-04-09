@@ -12,7 +12,7 @@ int main()
 
 	while (true)
 	{
-		nn.Train(data, targets, 0.75);
+		nn.Train(data, targets, 0.75f);
 		std::cout << nn.SquareError(data, targets) << std::endl;
 	}
 
