@@ -4,8 +4,8 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 {
 	float min = vec[0];
 	float max = vec[0];
-
-	for (unsigned int i = 1; i < vec.size(); i++)
+	const int size = vec.size();
+	for (int i = 1; i < size; i++)
 	{
 		if (min > vec[i])
 			min = vec[i];
@@ -15,18 +15,8 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 
 	const float denom = max - min;
 	const float coeff = b - a;
-	for (unsigned int i = 0; i < vec.size(); i++)
+	for (int i = 0; i < size; i++)
 		vec[i] = coeff * (vec[i] - min) / denom + a;
-}
-
-int Sign(const float x)
-{
-	if (x > 0)
-		return 1;
-	if (x < 0)
-		return -1;
-
-	return 0;
 }
 
 NeuralNetwork::NeuralNetwork()
@@ -34,53 +24,10 @@ NeuralNetwork::NeuralNetwork()
 	std::srand((unsigned int)std::time(0));
 }
 
-NeuralNetwork::NeuralNetwork(const vector<unsigned int> topology)
+NeuralNetwork::NeuralNetwork(const vector<int> topology)
 {
 	std::srand((unsigned int)std::time(0));
 	Initialize(topology);
-}
-
-void NeuralNetwork::Initialize(const vector<unsigned int> topology)
-{
-	const unsigned int numOfLayers = topology.size();
-	const unsigned int lastIndex = numOfLayers - 1;
-
-	D.resize(numOfLayers);
-	Ex.resize(numOfLayers);
-	O.resize(numOfLayers);
-	Matrices.resize(numOfLayers);
-	Grad.resize(numOfLayers);
-	
-	//these two are for rprop
-	PrevGrad.resize(numOfLayers);
-	Delta.resize(numOfLayers);
-
-	//initialize the rest beginning from the second layer
-	for (unsigned int i = 1; i < numOfLayers; i++)
-	{
-		//these don't need a bias node
-		D[i].setZero(topology[i]);
-		Ex[i].setZero(topology[i]);
-
-		//these need a bias node
-		O[i - 1].setZero(topology[i - 1] + 1);
-		O[i - 1][topology[i - 1]] = 1;
-
-		//+1 for the bias of the prev layer
-		//initialize Matrices with random numbers
-		Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
-		Matrices[i] *= sqrt(12.0 / (topology[i - 1] + 1.0 + topology[i]));
-
-		//initialize Grads with value 0
-		Grad[i].setZero(topology[i - 1] + 1, topology[i]);
-		PrevGrad[i].setZero(topology[i - 1] + 1, topology[i]);
-
-		//initialize Delta
-		Delta[i].setConstant(topology[i - 1] + 1, topology[i], 0.0125);
-	}
-
-	//last layer does not have a bias node
-	O[lastIndex].setZero(topology[lastIndex]);
 }
 
 float NeuralNetwork::Activation(const float x)
@@ -97,13 +44,94 @@ float NeuralNetwork::Derivative(const float x)
 float NeuralNetwork::OutActivation(const float x)
 {
 	//logistic for output
-	return 1.0 / (1.0 + exp(-x));
+	return 1.0f / (1.0f + exp(-x));
 }
 
 float NeuralNetwork::OutDerivative(const float x)
 {
 	const float af = OutActivation(x);
-	return af * (1.0 - af);
+	return af * (1.0f - af);
+}
+
+void NeuralNetwork::Initialize(const vector<int> topology)
+{
+	const int numOfLayers = topology.size();
+	const int lastIndex = numOfLayers - 1;
+
+	D.resize(numOfLayers);
+	Ex.resize(numOfLayers);
+	O.resize(numOfLayers);
+	Matrices.resize(numOfLayers);
+	Grad.resize(numOfLayers);
+
+	//initialize the rest beginning from the second layer
+	for (int i = 1; i < numOfLayers; i++)
+	{
+		//these don't need a bias node
+		D[i].setZero(topology[i]);
+		Ex[i].setZero(topology[i]);
+
+		//these need a bias node
+		O[i - 1].setZero(topology[i - 1] + 1);
+		O[i - 1][topology[i - 1]] = 1;
+
+		//+1 for the bias of the prev layer
+		//initialize Matrices with random numbers
+		Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
+		Matrices[i] *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
+
+		//initialize Grad with value 0
+		Grad[i].setZero(topology[i - 1] + 1, topology[i]);
+	}
+
+	//last layer does not have a bias node
+	O[lastIndex].setZero(topology[lastIndex]);
+}
+
+void NeuralNetwork::SetMatrices(const vector<MatrixXf> & m)
+{
+	Matrices = m;
+}
+
+const vector<MatrixXf>& NeuralNetwork::GetMatrices() const
+{
+	return Matrices;
+}
+
+const vector<MatrixXf>& NeuralNetwork::GetGrad() const
+{
+	return Grad;
+}
+
+void NeuralNetwork::ZeroGrad()
+{
+	const int MatricesSize = Matrices.size();
+
+	for (int l = 1; l < MatricesSize; l++)
+		Grad[l].setZero();
+}
+
+void NeuralNetwork::SetIndex(const vector<int>& index)
+{
+	Index = index;
+}
+
+const vector<int>& NeuralNetwork::GetIndex() const
+{
+	return Index;
+}
+
+void NeuralNetwork::ShuffleIndex()
+{
+	for (int i = Index.size() - 1; i > 0; i--)
+		std::swap(Index[i], Index[rand() % (i + 1)]);
+}
+
+void NeuralNetwork::ResizeIndex(const int size)
+{
+	Index.resize(size);
+	for (int i = 0; i < size; i++)
+		Index[i] = i;
 }
 
 MatrixXf & NeuralNetwork::operator[](int layer)
@@ -115,15 +143,15 @@ const RowVectorXf & NeuralNetwork::FeedForward(const vector<float> & input)
 {
 	std::copy(input.data(), input.data() + input.size(), O[0].data());
 
-	const unsigned int lastIndex = Matrices.size() - 1;
-	for (unsigned int m = 1; m < lastIndex; m++)
+	const int lastIndex = Matrices.size() - 1;
+	for (int m = 1; m < lastIndex; m++)
 	{
 		Ex[m].noalias() = O[m - 1] * Matrices[m];
 		O[m].head(O[m].size() - 1) = Ex[m].unaryExpr(&Activation);
 	}
 
 	Ex[lastIndex].noalias() = O[lastIndex - 1] * Matrices[lastIndex];
-	O[lastIndex].noalias() = Ex[lastIndex].unaryExpr(&OutActivation);
+	O[lastIndex] = Ex[lastIndex].unaryExpr(&OutActivation);
 
 	return O.back();
 }
@@ -132,8 +160,8 @@ const RowVectorXf & NeuralNetwork::Evaluate(const vector<float> & input)
 {
 	std::copy(input.data(), input.data() + input.size(), O[0].data());
 
-	const unsigned int lastIndex = Matrices.size() - 1;
-	for (unsigned int m = 1; m < lastIndex; m++)
+	const int lastIndex = Matrices.size() - 1;
+	for (int m = 1; m < lastIndex; m++)
 	{
 		O[m].head(O[m].size() - 1).noalias() = O[m - 1] * Matrices[m];
 		O[m].head(O[m].size() - 1) = O[m].head(O[m].size() - 1).unaryExpr(&Activation);
@@ -145,15 +173,39 @@ const RowVectorXf & NeuralNetwork::Evaluate(const vector<float> & input)
 	return O.back();
 }
 
+float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
+{
+	const int inputCount = inputs.size();
+	float ret = 0;
+	for (int i = 0; i < inputCount; i++)
+	{
+		Evaluate(inputs[i]);
+
+		const int resSize = O.back().size();
+
+		float error = 0;
+		for (int k = 0; k < resSize; k++)
+			error += (targets[i][k] - O.back()[k]) * (targets[i][k] - O.back()[k]);
+
+		ret += error;
+
+		if (ret > CutOff)
+			break;
+	}
+
+	return ret;
+}
+
 float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
 {
-	unsigned int correct = 0;
-	
-	for (unsigned int i = 0; i < inputs.size(); i++)
+	int correct = 0;
+	const int inputSize = inputs.size();
+	for (int i = 0; i < inputSize; i++)
 	{
 		Evaluate(inputs[i]);
 		bool allCorrect = true;
-		for (unsigned int r = 0; r < O.back().size(); r++)
+		const int outSize = O.back().size();
+		for (int r = 0; r < outSize; r++)
 		{
 			//if (std::signbit(O.back()[r]) != std::signbit(targets[i][r]))
 			if (abs(targets[i][r] - O.back()[r]) > 0.5)
@@ -167,35 +219,7 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 			correct++;
 	}
 
-	return correct * 100.0 / inputs.size();
-}
-
-float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
-{
-	const unsigned int inputCount = inputs.size();
-	float ret = 0;
-	for (unsigned int i = 0; i < inputCount; i++)
-	{
-		Evaluate(inputs[i]);
-
-		const unsigned int resSize = O.back().size();
-
-		float error = 0;
-		for (unsigned int k = 0; k < resSize; k++)
-			error += (targets[i][k] - O.back()[k]) * (targets[i][k] - O.back()[k]);
-
-		ret += error;
-
-		if (ret > CutOff)
-			break;
-	}
-
-	return ret;
-}
-
-void NeuralNetwork::SetMatrices(const vector<MatrixXf> & m)
-{
-	Matrices = m;
+	return correct * 100.0f / inputs.size();
 }
 
 bool NeuralNetwork::WriteWeightsToFile(const char * path) const
@@ -204,10 +228,10 @@ bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 	if (!file.is_open())
 		return false;
 
-	const unsigned int matricesCount = Matrices.size();
-	for (unsigned int m = 1; m < matricesCount; m++)
+	const int matricesCount = Matrices.size();
+	for (int m = 1; m < matricesCount; m++)
 	{
-		const unsigned int curSize = Matrices[m].size() * sizeof(float);
+		const int curSize = Matrices[m].size() * sizeof(float);
 		file.write((const char*)Matrices[m].data(), curSize);
 	}
 
@@ -220,143 +244,89 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 	if (!file.is_open())
 		return false;
 
-	const unsigned int matricesCount = Matrices.size();
-	for (unsigned int m = 1; m < matricesCount; m++)
+	const int matricesCount = Matrices.size();
+	for (int m = 1; m < matricesCount; m++)
 	{
-		const unsigned int curSize = Matrices[m].size() * sizeof(float);
+		const int curSize = Matrices[m].size() * sizeof(float);
 		file.read((char*)Matrices[m].data(), curSize);
 	}
 
 	return true;
 }
 
-bool NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate, unsigned int batchSize)
+void NeuralNetwork::FeedAndBackProp(const int start, const int end, const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
 {
-	if (batchSize == 0 || batchSize > inputs.size())
-		batchSize = inputs.size();
+	const int L = D.size() - 1;
+	const int outSize = O[L].size();
 
-	//resize if needed
-	if (Index.size() != inputs.size())
+	for (int i = start; i < end; i++)
 	{
-		Index.resize(inputs.size());
-		for (unsigned int i = 0; i < Index.size(); i++)
-			Index[i] = i;
-	}
+		FeedForward(inputs[Index[i]]);
 
-	//shuffle index vector if needed
-	if (batchSize != inputs.size())
-	{
-		for (unsigned int i = Index.size() - 1; i > 0; i--)
+		//delta for output
+		for (int j = 0; j < outSize; j++)
+			D[L][j] = 2 * OutDerivative(Ex[L][j]) * (O[L][j] - targets[Index[i]][j]);
+
+		//grad for output
+		Grad[L].noalias() += O[L - 1].transpose() * D[L];
+
+		//delta for hidden
+		for (int l = L; l > 1; l--)
 		{
-			rnd.SetParams(0, i);
-			std::swap(Index[i], Index[rnd()]);
+			//calc the sums
+			D[l - 1].noalias() = Matrices[l].topRows(D[l - 1].size()) * D[l].transpose();
+
+			//multiply with derivatives
+			D[l - 1].array() *= Ex[l - 1].unaryExpr(&Derivative).array();
+
+			//grad for hidden
+			Grad[l - 1].noalias() += O[l - 2].transpose() * D[l - 1];
 		}
 	}
-	
-	const unsigned int L = D.size() - 1;
-	unsigned int start = 0;
-	unsigned int end = 0;
-
-	//calculate grad for each batch
-	while(end < inputs.size())
-	{
-		start = end;
-		end = start + batchSize;
-		if (end > inputs.size())
-			end = inputs.size();
-
-		for (unsigned int i = start; i < end; i++)
-		{
-			FeedForward(inputs[Index[i]]);
-
-			//delta for output
-			for (unsigned int j = 0; j < O[L].size(); j++)
-				D[L][j] = 2 * OutDerivative(Ex[L][j]) * (O[L][j] - targets[Index[i]][j]);
-
-			//delta for hidden
-			for (unsigned int l = L; l > 1; l--)
-			{
-				//calc the sum
-				D[l - 1].noalias() = Matrices[l].topRows(D[l - 1].size()) * D[l].transpose();
-
-				//multiply with derivative
-				D[l - 1].array() *= Ex[l - 1].unaryExpr(&Derivative).array();
-			}
-
-			//calc Grad
-			for (unsigned int l = 1; l < Grad.size(); l++)
-				Grad[l].noalias() += O[l - 1].transpose() * D[l];
-		}
-
-		//update weights
-		for (unsigned int l = 1; l < Matrices.size(); l++)
-		{
-			if (!Grad[l].allFinite())
-				return false;
-
-			Matrices[l] -= rate * Grad[l];
-		}
-
-		std::swap(Grad, PrevGrad);
-		for (unsigned int l = 1; l < Matrices.size(); l++)
-			Grad[l].setZero();
-	}
-
-	return true;
 }
 
-bool NeuralNetwork::TrainRprop(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const unsigned int epochs)
+void NeuralNetwork::UpdateWeights(const float rate)
 {
-	const unsigned int L = D.size() - 1;
-	for (unsigned int e = 0; e < epochs; e++)
+	const int MatricesSize = Matrices.size();
+
+	for (int l = 1; l < MatricesSize; l++)
+		Matrices[l] -= rate * Grad[l];
+
+	ZeroGrad();
+}
+
+void NeuralNetwork::UpdateWeights(const vector<MatrixXf> & grad, const float rate)
+{
+	const int MatricesSize = Matrices.size();
+
+	for (int l = 1; l < MatricesSize; l++)
+		Matrices[l] -= rate * grad[l];
+
+	ZeroGrad();
+}
+
+void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate, int batchSize)
+{
+	const int inputSize = inputs.size();
+
+	if (batchSize == 0 || batchSize > inputSize)
+		batchSize = inputSize;
+
+	//resize if needed
+	if (Index.size() != inputSize)
+		ResizeIndex(inputSize);
+
+	//shuffle index vector if needed
+	if (batchSize != inputSize)
+		ShuffleIndex();
+
+	int end = 0;
+	while (end < inputSize)
 	{
-		for (unsigned int i = 0; i < inputs.size(); i++)
-		{
-			FeedForward(inputs[i]);
+		const int start = end;
+		end = std::min(end + batchSize, inputSize);
 
-			//delta for output
-			for (unsigned int j = 0; j < O[L].size(); j++)
-				D[L][j] = 2 * OutDerivative(Ex[L][j]) * (O[L][j] - targets[i][j]);
-
-			//delta for hidden
-			for (unsigned int l = L; l > 1; l--)
-			{
-				//calc the sum
-				D[l - 1].noalias() = Matrices[l].topRows(D[l - 1].size()) * D[l].transpose();
-
-				//multiply with derivative
-				D[l - 1].array() *= Ex[l - 1].unaryExpr(&Derivative).array();
-			}
-
-			//calc Grad
-			for (unsigned int l = 1; l < Grad.size(); l++)
-				Grad[l].noalias() += O[l - 1].transpose() * D[l];
-		}
-
-		//update weights
-		for (unsigned int l = 1; l < Matrices.size(); l++)
-		{
-			if (!Grad[l].allFinite())
-				return false;
-
-			//store number of weights here to avoid recalculation of rows * cols for each matrix
-			const unsigned int numOfWeights = Matrices[l].size();
-			for (unsigned int w = 0; w < numOfWeights; w++)
-			{
-				const int sign = Sign(Grad[l](w) * PrevGrad[l](w));
-				if (sign > 0)
-					Delta[l](w) = fmin(Delta[l](w) * 1.2, 100.0);
-				else if (sign < 0)
-					Delta[l](w) = fmax(Delta[l](w) * 0.5, 1e-10);
-
-				Matrices[l](w) -= Sign(Grad[l](w)) * Delta[l](w);
-			}
-		}
-
-		std::swap(Grad, PrevGrad);
-		for (unsigned int l = 1; l < Matrices.size(); l++)
-			Grad[l].setZero();
+		FeedAndBackProp(start, end, inputs, targets);
+		UpdateWeights(rate);
 	}
-
-	return true;
 }
