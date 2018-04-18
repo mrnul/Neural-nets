@@ -1,20 +1,21 @@
 #include <MyHeaders\NeuralNetworkMT.h>
 
-void NeuralNetworkThread(ThreadData & data, const NeuralNetwork & master)
+void NeuralNetworkTrainThread(ThreadData & data, NeuralNetwork & master)
 {
 	while (true)
 	{
 		if (!data.wakeUp.Wait())
-			return;
+			break;
 
 		if (data.mustQuit.IsSignaled())
-			return;
+			break;
 
-		data.nn.SetIndex(master.GetIndex());
+		data.nn.SetIndexVector(master.GetIndexVector());
 		data.nn.SetMatrices(master.GetMatrices());
 
+		data.nn.SwapGradPrevGrad();
 		data.nn.ZeroGrad();
-		data.nn.FeedAndBackProp(data.Start, data.End, *data.inputs, *data.targets);
+		data.nn.FeedAndBackProp(*data.inputs, *data.targets, data.Start, data.End, data.l1, data.l2);
 
 		data.wakeUp.Reset();
 		data.jobDone.Signal();
@@ -48,6 +49,11 @@ float NeuralNetworkMT::Accuracy(const vector<vector<float>>& inputs, const vecto
 	return Master.Accuracy(inputs, targets);
 }
 
+NeuralNetwork & NeuralNetworkMT::GetMaster()
+{
+	return Master;
+}
+
 void NeuralNetworkMT::BeginThreads(const int threads)
 {
 	Data.resize(threads);
@@ -55,7 +61,7 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 	for (int i = 0; i < threads; i++)
 	{
 		Data[i].nn.Initialize(Topology);
-		Threads[i] = thread(NeuralNetworkThread, std::ref(Data[i]), std::cref(Master));
+		Threads[i] = thread(NeuralNetworkTrainThread, std::ref(Data[i]), std::ref(Master));
 	}	
 }
 
@@ -74,7 +80,8 @@ void NeuralNetworkMT::StopThreads()
 	Threads = vector<thread>();
 }
 
-void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate, int batchSize)
+void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
+	int batchSize, const float l1, const float l2)
 {
 	const int inputSize = inputs.size();
 
@@ -82,12 +89,12 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		batchSize = inputSize;
 
 	//resize if needed
-	if (Master.GetIndex().size() != inputSize)
-		Master.ResizeIndex(inputSize);
+	if (Master.GetIndexVector().size() != inputSize)
+		Master.ResizeIndexVector(inputSize);
 
 	//shuffle index vector if needed
 	if (batchSize != inputSize)
-		Master.ShuffleIndex();
+		Master.ShuffleIndexVector();
 
 	int end = 0;
 	const int threadsCount = Threads.size();
@@ -100,7 +107,8 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		const int howManyPerThread = batchSize / threadsCount;
 		for (int t = 0; t < threadsCount; t++)
 		{
-			Data[t].rate = rate;
+			Data[t].l1 = l1;
+			Data[t].l2 = l2;
 			Data[t].inputs = &inputs;
 			Data[t].targets = &targets;
 
@@ -117,6 +125,45 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].jobDone.Reset();
 			Master.UpdateWeights(Data[t].nn.GetGrad(), rate);
 		}
-
 	}
+}
+
+void NeuralNetworkMT::TrainRPROP(const vector<vector<float>>& inputs, const vector<vector<float>>& targets)
+{
+	const int inputSize = inputs.size();
+
+	//resize if needed
+	if (Master.GetIndexVector().size() != inputSize)
+		Master.ResizeIndexVector(inputSize);
+
+	const int threadsCount = Threads.size();
+
+	const int howManyPerThread = inputSize / threadsCount;
+	for (int t = 0; t < threadsCount; t++)
+	{
+		Data[t].inputs = &inputs;
+		Data[t].targets = &targets;
+		
+		Data[t].Start = t * howManyPerThread;
+		Data[t].End = std::min(Data[t].Start + howManyPerThread, inputSize);
+		Data[t].wakeUp.Signal();
+	}
+
+	//wait for threads to finish and update the Grad of Master
+	for (int t = 0; t < threadsCount; t++)
+	{
+		Data[t].jobDone.Wait();
+		Data[t].jobDone.Reset();
+
+		vector<MatrixXf> & MasterGrad = Master.GetGrad();
+		const int mSize = MasterGrad.size();
+		for (int m = 0; m < mSize; m++)
+			MasterGrad[m] += Data[t].nn.GetGrad()[m];
+	}
+
+	//update deltas and weights of master
+	Master.ResilientUpdate();
+
+	Master.SwapGradPrevGrad();
+	Master.ZeroGrad();
 }

@@ -4,8 +4,9 @@
 #include <Eigen\Dense>
 #include <vector>
 #include <fstream>
-#include <iostream>
 #include <ctime>
+#undef min //i can't use std::min
+#undef max //i can't use std::max
 
 using std::vector;
 using Eigen::MatrixXf;
@@ -33,8 +34,12 @@ class NeuralNetwork
 
 		//the gradient
 		vector<MatrixXf> Grad;
+		vector<MatrixXf> PrevGrad;
+		
+		//deltas for rprop
+		vector<MatrixXf> Deltas;
 
-		//to shuffle inputs
+		//index vector to shuffle inputs
 		vector<int> Index;
 	public:
 		NeuralNetwork();
@@ -48,15 +53,23 @@ class NeuralNetwork
 		static float OutActivation(const float x);
 		static float OutDerivative(const float x);
 
+		//initialize weights with random numbers in range [-r, r] with r = sqrt(12 / (in + out))
 		void Initialize(const vector<int> topology);
-		void SetMatrices(const vector<MatrixXf> & m);
-		const vector<MatrixXf> & GetMatrices() const;
-		const vector<MatrixXf> & GetGrad() const;
+		void SetMatrices(vector<MatrixXf> & m);
+		void SetGrad(vector<MatrixXf> & grad);
+		void SetPrevGrad(vector<MatrixXf> & grad);
+		void SetDeltas(vector<MatrixXf> & deltas);
+		vector<MatrixXf> & GetMatrices();
+		vector<MatrixXf> & GetGrad();
+		vector<MatrixXf> & GetPrevGrad();
+		vector<MatrixXf> & GetDeltas();
+		void SwapGradPrevGrad();
 		void ZeroGrad();
-		void SetIndex(const vector<int> & index);
-		const vector<int> & GetIndex() const;
-		void ShuffleIndex();
-		void ResizeIndex(const int size);
+		void SetIndexVector(const vector<int> & index);
+		vector<int> & GetIndexVector();
+		void ShuffleIndexVector();
+		//resizes and initializes index vector 0...size-1
+		void ResizeIndexVector(const int size);
 		MatrixXf & operator[](int layer);
 
 		//uses member Ex and O
@@ -72,10 +85,21 @@ class NeuralNetwork
 		bool WriteWeightsToFile(const char *path) const;
 		bool LoadWeightsFromFile(const char *path);
 
-		void FeedAndBackProp(const int start, const int end, const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
-		void UpdateWeights(const float rate);
-		void UpdateWeights(const vector<MatrixXf> & grad, const float rate);
+		//feed and backprop from Index[start] to Index[end - 1]
+		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
+			const int start = 0, int end = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+		//backprop on one target
+		void BackProp(const vector<float> & target);
+		//update weights using this gradient
+		void UpdateWeights(const float rate = 1.0f);
+		//update weights using another gradient
+		void UpdateWeights(const vector<MatrixXf> & grad, const float rate = 1.0f);
+		//update deltas and weights
+		void ResilientUpdate();
 
 		//training with backpropagation
-		void Train(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float rate, int batchSize = 0);
+		void Train(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float rate,
+			int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+		//training with resilient backpropagation
+		void TrainRPROP(const vector<vector<float>> &inputs, const vector<vector<float>> & targets);
 };
