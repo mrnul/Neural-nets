@@ -20,6 +20,54 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 		vec[i] = coeff * (vec[i] - min) / denom + a;
 }
 
+void NormalizeColumnwise(vector<vector<float>> & data, const float a, const float b)
+{
+	const int DataCount = data.size();
+	const int FeatureCount = data[0].size();
+	const float coeff = b - a;
+
+	for (int f = 0; f < FeatureCount; f++)
+	{
+		float min = data[0][f];
+		float max = data[0][f];
+		for (int d = 1; d < DataCount; d++)
+		{
+			if (min > data[d][f])
+				min = data[d][f];
+			else if (max < data[d][f])
+				max = data[d][f];
+		}
+
+		const float denom = max - min;
+		if (denom != 0.0f)
+		{
+			for (int d = 0; d < DataCount; d++)
+				data[d][f] = coeff * (data[d][f] - min) / denom + a;
+		}
+		else
+		{
+			if (max > b)
+			{
+				for (int d = 0; d < DataCount; d++)
+					data[d][f] = b;
+			}
+			else if (max < a)
+			{
+				for (int d = 0; d < DataCount; d++)
+					data[d][f] = a;
+			}
+		}
+	}
+
+}
+
+void NormalizeRowwise(vector<vector<float>> & data, const float a, const float b)
+{
+	const int size = data.size();
+	for (int i = 0; i < size; i++)
+		NormalizeVector(data[i], a, b);
+}
+
 NeuralNetwork::NeuralNetwork()
 {
 	std::srand((unsigned int)std::time(0));
@@ -65,7 +113,6 @@ void NeuralNetwork::Initialize(const vector<int> topology)
 	Matrices.resize(numOfLayers);
 	Grad.resize(numOfLayers);
 	PrevGrad.resize(numOfLayers);
-	Deltas.resize(numOfLayers);
 
 	//initialize the rest beginning from the second layer
 	for (int i = 1; i < numOfLayers; i++)
@@ -83,34 +130,28 @@ void NeuralNetwork::Initialize(const vector<int> topology)
 		Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
 		Matrices[i] *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
 
-		//initialize Grad with value 0 and deltas
+		//initialize Grad with value 0
 		Grad[i].setZero(topology[i - 1] + 1, topology[i]);
 		PrevGrad[i].setZero(topology[i - 1] + 1, topology[i]);
-		Deltas[i].setConstant(topology[i - 1] + 1, topology[i], 0.0125f);
 	}
 
 	//last layer does not have a bias node
 	O[lastIndex].setZero(topology[lastIndex]);
 }
 
-void NeuralNetwork::SetMatrices(vector<MatrixXf> & m)
+void NeuralNetwork::SetMatrices(const vector<MatrixXf> & m)
 {
 	Matrices = m;
 }
 
-void NeuralNetwork::SetGrad(vector<MatrixXf> & grad)
+void NeuralNetwork::SetGrad(const vector<MatrixXf> & grad)
 {
 	Grad = grad;
 }
 
-void NeuralNetwork::SetPrevGrad(vector<MatrixXf> & grad)
+void NeuralNetwork::SetPrevGrad(const vector<MatrixXf> & grad)
 {
 	PrevGrad = grad;
-}
-
-void NeuralNetwork::SetDeltas(vector<MatrixXf>& deltas)
-{
-	Deltas = deltas;
 }
 
 vector<MatrixXf>& NeuralNetwork::GetMatrices()
@@ -126,11 +167,6 @@ vector<MatrixXf>& NeuralNetwork::GetGrad()
 vector<MatrixXf>& NeuralNetwork::GetPrevGrad()
 {
 	return PrevGrad;
-}
-
-vector<MatrixXf>& NeuralNetwork::GetDeltas()
-{
-	return Deltas;
 }
 
 void NeuralNetwork::SwapGradPrevGrad()
@@ -290,7 +326,7 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 }
 
 void NeuralNetwork::FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-	const int start, int end, const float l1, const float l2)
+	const int start, int end)
 {
 	if (end == 0)
 		end = inputs.size();
@@ -299,29 +335,6 @@ void NeuralNetwork::FeedAndBackProp(const vector<vector<float>> & inputs, const 
 	{
 		FeedForward(inputs[Index[i]]);
 		BackProp(targets[Index[i]]);
-	}
-
-	//add l1 and l2 regularization terms to the gradient
-	//Grad = Grad + l1term + l2term
-	const int lCount = Grad.size();
-
-	//both l1 and l2
-	if (l1 != 0.0f && l2 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l] += l1 * Matrices[l].unaryExpr(&Sign) + l2 * Matrices[l];
-	}
-	//only l1
-	else if (l1 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l] += l1 * Matrices[l].unaryExpr(&Sign);
-	}
-	//only l2
-	else if (l2 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l] += l2 * Matrices[l];
 	}
 }
 
@@ -351,13 +364,6 @@ void NeuralNetwork::BackProp(const vector<float> & target)
 	}
 }
 
-void NeuralNetwork::UpdateWeights(const float rate)
-{
-	const int MatricesSize = Matrices.size();
-	for (int l = 1; l < MatricesSize; l++)
-		Matrices[l] -= rate * Grad[l];
-}
-
 void NeuralNetwork::UpdateWeights(const vector<MatrixXf> & grad, const float rate)
 {
 	const int MatricesSize = Matrices.size();
@@ -365,33 +371,67 @@ void NeuralNetwork::UpdateWeights(const vector<MatrixXf> & grad, const float rat
 		Matrices[l] -= rate * grad[l];
 }
 
-void NeuralNetwork::ResilientUpdate()
+void NeuralNetwork::UpdateWeights(const float rate)
 {
-	const int mSize = Matrices.size();
+	const int MatricesSize = Matrices.size();
+	for (int l = 1; l < MatricesSize; l++)
+		Matrices[l] -= rate * Grad[l];
+}
 
-	for (int m = 0; m < mSize; m++)
+void NeuralNetwork::AddL1L2(const float l1, const float l2)
+{
+	//Grad = Grad + l1term + l2term
+	//don't regularize the bias
+	//topRows(Grad[l].rows() - 1) skips the last row
+	
+	const int lCount = Grad.size();
+
+	//both l1 and l2
+	if (l1 != 0.0f && l2 != 0.0f)
 	{
-		const int wSize = Matrices[m].size();
-		for (int w = 0; w < wSize; w++)
-		{
-			const int sign = Sign(Grad[m](w) * PrevGrad[m](w));
-			if (sign > 0)
-			{
-				Deltas[m](w) = std::min(Deltas[m](w) * 1.2f, 50.0f);
-			}
-			else if (sign < 0)
-			{
-				Deltas[m](w) = std::max(Deltas[m](w) * 0.5f, 1e-6f);
-				Grad[m](w) = 0.0f;
-			}
-
-			Matrices[m](w) -= Sign(Grad[m](w)) * Deltas[m](w);
-		}
+		for (int l = 1; l < lCount; l++)
+			Grad[l].topRows(Grad[l].rows() - 1) += 
+			l1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
+			+ l2 * Matrices[l].topRows(Grad[l].rows() - 1);
+	}
+	//only l1
+	else if (l1 != 0.0f)
+	{
+		for (int l = 1; l < lCount; l++)
+			Grad[l].topRows(Grad[l].rows() - 1) += l1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
+	}
+	//only l2
+	else if (l2 != 0.0f)
+	{
+		for (int l = 1; l < lCount; l++)
+			Grad[l].topRows(Grad[l].rows() - 1) += l2 * Matrices[l].topRows(Grad[l].rows() - 1);
 	}
 }
 
+void NeuralNetwork::AddMomentum(const float momentum)
+{
+	if (momentum == 0.0f)
+		return;
+
+	const int lCount = Grad.size();
+	for (int l = 0; l < lCount; l++)
+		Grad[l] += momentum * PrevGrad[l];
+}
+
+bool NeuralNetwork::AllFinite()
+{
+	const int size = Matrices.size();
+	for (int m = 0; m < size; m++)
+	{
+		if (!Matrices[m].allFinite())
+			return false;
+	}
+
+	return true;
+}
+
 void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
-	int batchSize, const float l1, const float l2)
+	const float momentum, int batchSize, const float l1, const float l2)
 {
 	const int inputSize = inputs.size();
 
@@ -412,27 +452,12 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 		const int start = end;
 		end = std::min(end + batchSize, inputSize);
 
-		FeedAndBackProp(inputs, targets, start, end, l1, l2);
+		FeedAndBackProp(inputs, targets, start, end);
+		AddL1L2(l1, l2);
+		AddMomentum(momentum);
 		UpdateWeights(rate);
 
 		SwapGradPrevGrad();
 		ZeroGrad();
 	}
-}
-
-
-void NeuralNetwork::TrainRPROP(const vector<vector<float>>& inputs, const vector<vector<float>>& targets)
-{
-	const int inputSize = inputs.size();
-
-	//resize if needed
-	if (Index.size() != inputSize)
-		ResizeIndexVector(inputSize);
-
-	FeedAndBackProp(inputs, targets);
-
-	ResilientUpdate();
-
-	SwapGradPrevGrad();
-	ZeroGrad();
 }

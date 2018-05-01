@@ -1,20 +1,21 @@
 #pragma once
 
-#include <MyHeaders\Event.h>
 #include <Eigen\Dense>
 #include <vector>
 #include <fstream>
 #include <ctime>
-#undef min //i can't use std::min
-#undef max //i can't use std::max
 
 using std::vector;
 using Eigen::MatrixXf;
 using Eigen::RowVectorXf;
 
 
-//for each i, vec[i] is in range [a,b]
-void NormalizeVector(vector<float> & vec, const float a = 0, const float b = 1);
+//each element is in range [a,b]
+void NormalizeVector(vector<float> & vec, const float a = 0.1f, const float b = 0.9f);
+//each column is scaled in [a,b]
+void NormalizeColumnwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
+//each row is scaled in [a,b]
+void NormalizeRowwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
 inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
 
 class NeuralNetwork
@@ -35,9 +36,6 @@ class NeuralNetwork
 		//the gradient
 		vector<MatrixXf> Grad;
 		vector<MatrixXf> PrevGrad;
-		
-		//deltas for rprop
-		vector<MatrixXf> Deltas;
 
 		//index vector to shuffle inputs
 		vector<int> Index;
@@ -53,16 +51,14 @@ class NeuralNetwork
 		static float OutActivation(const float x);
 		static float OutDerivative(const float x);
 
-		//initialize weights with random numbers in range [-r, r] with r = sqrt(12 / (in + out))
+		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
 		void Initialize(const vector<int> topology);
-		void SetMatrices(vector<MatrixXf> & m);
-		void SetGrad(vector<MatrixXf> & grad);
-		void SetPrevGrad(vector<MatrixXf> & grad);
-		void SetDeltas(vector<MatrixXf> & deltas);
+		void SetMatrices(const vector<MatrixXf> & m);
+		void SetGrad(const vector<MatrixXf> & grad);
+		void SetPrevGrad(const vector<MatrixXf> & grad);
 		vector<MatrixXf> & GetMatrices();
 		vector<MatrixXf> & GetGrad();
 		vector<MatrixXf> & GetPrevGrad();
-		vector<MatrixXf> & GetDeltas();
 		void SwapGradPrevGrad();
 		void ZeroGrad();
 		void SetIndexVector(const vector<int> & index);
@@ -75,7 +71,7 @@ class NeuralNetwork
 		//uses member Ex and O
 		const RowVectorXf & FeedForward(const vector<float> & input);
 
-		//only uses member O
+		//uses only member O
 		const RowVectorXf & Evaluate(const vector<float> & input);
 
 		//stops calculation when error > cutoff
@@ -87,19 +83,21 @@ class NeuralNetwork
 
 		//feed and backprop from Index[start] to Index[end - 1]
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-			const int start = 0, int end = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+			const int start = 0, int end = 0);
 		//backprop on one target
 		void BackProp(const vector<float> & target);
 		//update weights using this gradient
-		void UpdateWeights(const float rate = 1.0f);
+		void UpdateWeights(const float rate);
 		//update weights using another gradient
-		void UpdateWeights(const vector<MatrixXf> & grad, const float rate = 1.0f);
-		//update deltas and weights
-		void ResilientUpdate();
+		void UpdateWeights(const vector<MatrixXf> & grad, const float rate);
+		//add l1 and l2 regularization terms to the gradient
+		void AddL1L2(const float l1, const float l2);
+		//add momentum to the gradient
+		void AddMomentum(const float momentum);
+		//checks if all weights are finite (no nan or inf)
+		bool AllFinite();
 
 		//training with backpropagation
 		void Train(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float rate,
-			int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
-		//training with resilient backpropagation
-		void TrainRPROP(const vector<vector<float>> &inputs, const vector<vector<float>> & targets);
+			const float momentum = 0.0f, int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
 };

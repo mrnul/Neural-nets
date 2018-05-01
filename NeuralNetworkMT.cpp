@@ -15,7 +15,12 @@ void NeuralNetworkTrainThread(ThreadData & data, NeuralNetwork & master)
 
 		data.nn.SwapGradPrevGrad();
 		data.nn.ZeroGrad();
-		data.nn.FeedAndBackProp(*data.inputs, *data.targets, data.Start, data.End, data.l1, data.l2);
+		//calc the grad
+		data.nn.FeedAndBackProp(*data.inputs, *data.targets, data.Start, data.End);
+		//l1term + l2term
+		data.nn.AddL1L2(data.l1, data.l2);
+		//add momentum
+		data.nn.AddMomentum(data.momentum);
 
 		data.wakeUp.Reset();
 		data.jobDone.Signal();
@@ -37,16 +42,6 @@ void NeuralNetworkMT::Initialize(const vector<int> topology, const int threads)
 	Topology = topology;
 	Master.Initialize(topology);
 	BeginThreads(threads);
-}
-
-float NeuralNetworkMT::SquareError(const vector<vector<float>>& inputs, const vector<vector<float>>& targets, const float CutOff)
-{
-	return Master.SquareError(inputs, targets, CutOff);
-}
-
-float NeuralNetworkMT::Accuracy(const vector<vector<float>>& inputs, const vector<vector<float>>& targets)
-{
-	return Master.Accuracy(inputs, targets);
 }
 
 NeuralNetwork & NeuralNetworkMT::GetMaster()
@@ -81,7 +76,7 @@ void NeuralNetworkMT::StopThreads()
 }
 
 void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
-	int batchSize, const float l1, const float l2)
+	const float momentum, int batchSize, const float l1, const float l2)
 {
 	const int inputSize = inputs.size();
 
@@ -107,6 +102,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		const int howManyPerThread = batchSize / threadsCount;
 		for (int t = 0; t < threadsCount; t++)
 		{
+			Data[t].momentum = momentum;
 			Data[t].l1 = l1;
 			Data[t].l2 = l2;
 			Data[t].inputs = &inputs;
@@ -123,47 +119,9 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		{
 			Data[t].jobDone.Wait();
 			Data[t].jobDone.Reset();
+
+			//Grad has the regularization terms + the momentum
 			Master.UpdateWeights(Data[t].nn.GetGrad(), rate);
 		}
 	}
-}
-
-void NeuralNetworkMT::TrainRPROP(const vector<vector<float>>& inputs, const vector<vector<float>>& targets)
-{
-	const int inputSize = inputs.size();
-
-	//resize if needed
-	if (Master.GetIndexVector().size() != inputSize)
-		Master.ResizeIndexVector(inputSize);
-
-	const int threadsCount = Threads.size();
-
-	const int howManyPerThread = inputSize / threadsCount;
-	for (int t = 0; t < threadsCount; t++)
-	{
-		Data[t].inputs = &inputs;
-		Data[t].targets = &targets;
-		
-		Data[t].Start = t * howManyPerThread;
-		Data[t].End = std::min(Data[t].Start + howManyPerThread, inputSize);
-		Data[t].wakeUp.Signal();
-	}
-
-	//wait for threads to finish and update the Grad of Master
-	for (int t = 0; t < threadsCount; t++)
-	{
-		Data[t].jobDone.Wait();
-		Data[t].jobDone.Reset();
-
-		vector<MatrixXf> & MasterGrad = Master.GetGrad();
-		const int mSize = MasterGrad.size();
-		for (int m = 0; m < mSize; m++)
-			MasterGrad[m] += Data[t].nn.GetGrad()[m];
-	}
-
-	//update deltas and weights of master
-	Master.ResilientUpdate();
-
-	Master.SwapGradPrevGrad();
-	Master.ZeroGrad();
 }
