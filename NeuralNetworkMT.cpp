@@ -93,13 +93,13 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 
 	int end = 0;
 	const int threadsCount = Threads.size();
+	const int howManyPerThread = batchSize / threadsCount;
 
 	while (end < inputSize)
 	{
 		const int start = end;
 		end = std::min(end + batchSize, inputSize);
 
-		const int howManyPerThread = batchSize / threadsCount;
 		for (int t = 0; t < threadsCount; t++)
 		{
 			Data[t].momentum = momentum;

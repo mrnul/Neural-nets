@@ -114,7 +114,6 @@ void NeuralNetwork::Initialize(const vector<int> topology)
 	Grad.resize(numOfLayers);
 	PrevGrad.resize(numOfLayers);
 
-	//initialize the rest beginning from the second layer
 	for (int i = 1; i < numOfLayers; i++)
 	{
 		//these don't need a bias node
