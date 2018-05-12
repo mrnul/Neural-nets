@@ -11,6 +11,11 @@ using std::thread;
 struct ThreadData
 {
 	NeuralNetwork nn;
+
+	Event wakeUp;
+	Event mustQuit;
+	Event jobDone;
+
 	const vector<vector<float>> *inputs;
 	const vector<vector<float>> *targets;
 
@@ -19,13 +24,9 @@ struct ThreadData
 	float l2;
 	int Start;
 	int End;
-
-	Event wakeUp;
-	Event mustQuit;
-	Event jobDone;
 };
 
-void NeuralNetworkTrainThread(ThreadData & data, NeuralNetwork & master);
+void NeuralNetworkTrainThread(ThreadData & data, const NeuralNetwork & master);
 
 class NeuralNetworkMT
 {
@@ -43,4 +44,5 @@ class NeuralNetworkMT
 		void StopThreads();
 		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
 			const float momentum = 0.0f, int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+		~NeuralNetworkMT();
 };

@@ -53,25 +53,29 @@ class NeuralNetwork
 
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
 		void Initialize(const vector<int> topology);
+		//initialize everything except for the weights
+		void InitializeNoWeights(const vector<int> topology);
 		void SetMatrices(const vector<MatrixXf> & m);
 		void SetGrad(const vector<MatrixXf> & grad);
 		void SetPrevGrad(const vector<MatrixXf> & grad);
-		vector<MatrixXf> & GetMatrices();
-		vector<MatrixXf> & GetGrad();
-		vector<MatrixXf> & GetPrevGrad();
+		const vector<MatrixXf> & GetMatrices() const;
+		const vector<MatrixXf> & GetGrad() const;
+		const vector<MatrixXf> & GetPrevGrad() const;
 		void SwapGradPrevGrad();
 		void ZeroGrad();
 		void SetIndexVector(const vector<int> & index);
-		vector<int> & GetIndexVector();
+		const vector<int> & GetIndexVector() const;
 		void ShuffleIndexVector();
 		//resizes and initializes index vector 0...size-1
 		void ResizeIndexVector(const int size);
 		MatrixXf & operator[](int layer);
 
-		//uses member Ex and O
+		//uses members Ex , O , Matrices
 		const RowVectorXf & FeedForward(const vector<float> & input);
+		//uses members Ex , O
+		const RowVectorXf & FeedForward(const vector<float> & input, const vector<MatrixXf> & matrices);
 
-		//uses only member O
+		//uses members O, Matrices
 		const RowVectorXf & Evaluate(const vector<float> & input);
 
 		//stops calculation when error > cutoff
@@ -84,20 +88,26 @@ class NeuralNetwork
 		//feed and backprop from Index[start] to Index[end - 1]
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 			const int start = 0, int end = 0);
+		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
+			const vector<MatrixXf> & matrices, const vector<int> & index,
+			const int start = 0, int end = 0);
+
 		//backprop on one target
 		void BackProp(const vector<float> & target);
+		void BackProp(const vector<float> & target, const vector<MatrixXf> & mat);
 		//update weights using this gradient
 		void UpdateWeights(const float rate);
 		//update weights using another gradient
 		void UpdateWeights(const vector<MatrixXf> & grad, const float rate);
 		//add l1 and l2 regularization terms to the gradient
 		void AddL1L2(const float l1, const float l2);
+		void AddL1L2(const float l1, const float l2 , const vector<MatrixXf> & matrices);
 		//add momentum to the gradient
 		void AddMomentum(const float momentum);
 		//checks if all weights are finite (no nan or inf)
 		bool AllFinite();
 
 		//training with backpropagation
-		void Train(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float rate,
+		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
 			const float momentum = 0.0f, int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
 };

@@ -1,6 +1,6 @@
 #include <MyHeaders\NeuralNetworkMT.h>
 
-void NeuralNetworkTrainThread(ThreadData & data, NeuralNetwork & master)
+void NeuralNetworkTrainThread(ThreadData & data, const NeuralNetwork & master)
 {
 	while (true)
 	{
@@ -10,16 +10,12 @@ void NeuralNetworkTrainThread(ThreadData & data, NeuralNetwork & master)
 		if (data.mustQuit.IsSignaled())
 			break;
 
-		data.nn.SetIndexVector(master.GetIndexVector());
-		data.nn.SetMatrices(master.GetMatrices());
-
 		data.nn.SwapGradPrevGrad();
 		data.nn.ZeroGrad();
-		//calc the grad
-		data.nn.FeedAndBackProp(*data.inputs, *data.targets, data.Start, data.End);
-		//l1term + l2term
-		data.nn.AddL1L2(data.l1, data.l2);
-		//add momentum
+		
+		//calculate the Gradient + l1term + l2term + momentum 
+		data.nn.FeedAndBackProp(*data.inputs, *data.targets, master.GetMatrices(), master.GetIndexVector(), data.Start, data.End);
+		data.nn.AddL1L2(data.l1, data.l2, master.GetMatrices());
 		data.nn.AddMomentum(data.momentum);
 
 		data.wakeUp.Reset();
@@ -55,8 +51,9 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 	Threads.resize(threads);
 	for (int i = 0; i < threads; i++)
 	{
-		Data[i].nn.Initialize(Topology);
-		Threads[i] = thread(NeuralNetworkTrainThread, std::ref(Data[i]), std::ref(Master));
+		//each thread will use master's weights
+		Data[i].nn.InitializeNoWeights(Topology);
+		Threads[i] = thread(NeuralNetworkTrainThread, std::ref(Data[i]), std::cref(Master));
 	}	
 }
 
@@ -120,8 +117,13 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].jobDone.Wait();
 			Data[t].jobDone.Reset();
 
-			//Grad has the regularization terms + the momentum
+			//Grad is the Gradient + regularization terms + momentum term
 			Master.UpdateWeights(Data[t].nn.GetGrad(), rate);
 		}
 	}
+}
+
+NeuralNetworkMT::~NeuralNetworkMT()
+{
+	StopThreads();
 }
