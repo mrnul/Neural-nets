@@ -1,22 +1,8 @@
 #pragma once
 
-#include <Eigen\Dense>
-#include <vector>
+#include <MyHeaders/neuralnetworkbase.h>
 #include <fstream>
 #include <ctime>
-
-using std::vector;
-using Eigen::MatrixXf;
-using Eigen::RowVectorXf;
-
-
-//each element is in range [a,b]
-void NormalizeVector(vector<float> & vec, const float a = 0.1f, const float b = 0.9f);
-//each column is scaled in [a,b]
-void NormalizeColumnwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
-//each row is scaled in [a,b]
-void NormalizeRowwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
-inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
 
 class NeuralNetwork
 {
@@ -43,14 +29,6 @@ class NeuralNetwork
 		NeuralNetwork();
 		NeuralNetwork(const vector<int> topology);
 
-		//activation and derivative of hidden layers
-		static float Activation(const float x);
-		static float Derivative(const float x);
-
-		//activation and derivative of output layer
-		static float OutActivation(const float x);
-		static float OutDerivative(const float x);
-
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
 		void Initialize(const vector<int> topology);
 		//initialize everything except for the weights
@@ -74,9 +52,6 @@ class NeuralNetwork
 		const RowVectorXf & FeedForward(const vector<float> & input);
 		//uses members Ex , O
 		const RowVectorXf & FeedForward(const vector<float> & input, const vector<MatrixXf> & matrices);
-
-		//uses members O, Matrices
-		const RowVectorXf & Evaluate(const vector<float> & input);
 
 		//stops calculation when error > cutoff
 		float SquareError(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float CutOff = INFINITY);
