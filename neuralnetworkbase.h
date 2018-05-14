@@ -7,9 +7,6 @@ using std::vector;
 using Eigen::MatrixXf;
 using Eigen::RowVectorXf;
 
-typedef float(*ActivationFunction)(const float);
-typedef float(*ActivationDerivative)(const float);
-
 namespace NNFunctions
 {
 	inline float ELU(const float x)
