@@ -77,6 +77,42 @@ void NeuralNetwork::InitializeNoWeights(const vector<int> topology)
 	O[lastIndex].setZero(topology[lastIndex]);
 }
 
+void NeuralNetwork::SetParams(const int batchsize, const float l1, const float l2, const float momentum, const float learningrate)
+{
+	Params.L1 = l1; Params.L2 = l2; Params.Momentum = momentum;
+	Params.LearningRate = learningrate; Params.BatchSize = batchsize;
+}
+
+void NeuralNetwork::SetParams(const NNParams & params)
+{
+	Params = params;
+}
+
+void NeuralNetwork::SetLearningRate(const float learningrate)
+{
+	Params.LearningRate = learningrate;
+}
+
+void NeuralNetwork::SetL1(const float l1)
+{
+	Params.L1 = l1;
+}
+
+void NeuralNetwork::SetL2(const float l2)
+{
+	Params.L2 = l2;
+}
+
+void NeuralNetwork::SetMomentum(const float momentum)
+{
+	Params.Momentum = momentum;
+}
+
+void NeuralNetwork::SetBatchSize(const int batchsize)
+{
+	Params.BatchSize = batchsize;
+}
+
 void NeuralNetwork::SetMatrices(const vector<MatrixXf> & m)
 {
 	Matrices = m;
@@ -90,6 +126,11 @@ void NeuralNetwork::SetGrad(const vector<MatrixXf> & grad)
 void NeuralNetwork::SetPrevGrad(const vector<MatrixXf> & grad)
 {
 	PrevGrad = grad;
+}
+
+const NNParams & NeuralNetwork::GetParams() const
+{
+	return Params;
 }
 
 const vector<MatrixXf>& NeuralNetwork::GetMatrices() const
@@ -156,7 +197,6 @@ const RowVectorXf & NeuralNetwork::FeedForward(const vector<float>& input, const
 {
 	return NNFeedForward(input, matrices, Ex, O);
 }
-
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
 {
@@ -332,32 +372,28 @@ bool NeuralNetwork::AllFinite()
 	return true;
 }
 
-void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
-	const float momentum, int batchSize, const float l1, const float l2)
+void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
 {
 	const int inputSize = inputs.size();
-
-	if (batchSize == 0 || batchSize > inputSize)
-		batchSize = inputSize;
 
 	//resize if needed
 	if (Index.size() != inputSize)
 		ResizeIndexVector(inputSize);
 
 	//shuffle index vector if needed
-	if (batchSize != inputSize)
+	if (Params.BatchSize != inputSize)
 		ShuffleIndexVector();
 
 	int end = 0;
 	while (end < inputSize)
 	{
 		const int start = end;
-		end = std::min(end + batchSize, inputSize);
+		end = std::min(end + Params.BatchSize, inputSize);
 
 		FeedAndBackProp(inputs, targets, start, end);
-		AddL1L2(l1, l2);
-		AddMomentum(momentum);
-		UpdateWeights(rate);
+		AddL1L2(Params.L1, Params.L2);
+		AddMomentum(Params.Momentum);
+		UpdateWeights(Params.LearningRate);
 
 		SwapGradPrevGrad();
 		ZeroGrad();

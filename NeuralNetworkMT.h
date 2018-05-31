@@ -2,31 +2,23 @@
 
 #include <MyHeaders\NeuralNetwork.h>
 #include <MyHeaders\Event.h>
+#include <shared_mutex>
 #include <thread>
 using std::thread;
 
 #undef min //i can't use std::min
-#undef max //i can't use std::max
 
 struct ThreadData
 {
-	NeuralNetwork nn;
+	NeuralNetwork NN;
 
 	Event wakeUp;
-	Event mustQuit;
 	Event jobDone;
+	bool mustQuit;
 
-	const vector<vector<float>> *inputs;
-	const vector<vector<float>> *targets;
-
-	float momentum;
-	float l1;
-	float l2;
 	int Start;
 	int End;
 };
-
-void NeuralNetworkTrainThread(ThreadData & data, const NeuralNetwork & master);
 
 class NeuralNetworkMT
 {
@@ -35,14 +27,15 @@ class NeuralNetworkMT
 		vector<ThreadData> Data;
 		NeuralNetwork Master;
 		vector<int> Topology;
+		const vector<vector<float>> *Inputs;
+		const vector<vector<float>> *Targets;
 	public:
 		NeuralNetworkMT();
 		NeuralNetworkMT(const vector<int> topology, const int threads = thread::hardware_concurrency());
 		void Initialize(const vector<int> topology, const int threads = thread::hardware_concurrency());
 		NeuralNetwork & GetMaster();
-		void BeginThreads(const int threads);
+		void BeginThreads(const int threads = thread::hardware_concurrency());
 		void StopThreads();
-		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
-			const float momentum = 0.0f, int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
 		~NeuralNetworkMT();
 };

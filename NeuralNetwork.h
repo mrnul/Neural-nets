@@ -4,6 +4,15 @@
 #include <fstream>
 #include <ctime>
 
+struct NNParams
+{
+	int BatchSize;
+	float L1;
+	float L2;
+	float Momentum;
+	float LearningRate;
+};
+
 class NeuralNetwork
 {
 	private:
@@ -25,6 +34,9 @@ class NeuralNetwork
 
 		//index vector to shuffle inputs
 		vector<int> Index;
+
+		//other parameters
+		NNParams Params;
 	public:
 		NeuralNetwork();
 		NeuralNetwork(const vector<int> topology);
@@ -33,9 +45,17 @@ class NeuralNetwork
 		void Initialize(const vector<int> topology);
 		//initialize everything except for the weights
 		void InitializeNoWeights(const vector<int> topology);
+		void SetParams(const int batchsize, const float l1, const float l2, const float momentum, const float learningrate);
+		void SetParams(const NNParams & params);
+		void SetLearningRate(const float learningrate);
+		void SetL1(const float l1);
+		void SetL2(const float l2);
+		void SetMomentum(const float momentum);
+		void SetBatchSize(const int batchsize);
 		void SetMatrices(const vector<MatrixXf> & m);
 		void SetGrad(const vector<MatrixXf> & grad);
 		void SetPrevGrad(const vector<MatrixXf> & grad);
+		const NNParams & GetParams() const;
 		const vector<MatrixXf> & GetMatrices() const;
 		const vector<MatrixXf> & GetGrad() const;
 		const vector<MatrixXf> & GetPrevGrad() const;
@@ -60,7 +80,7 @@ class NeuralNetwork
 		bool WriteWeightsToFile(const char *path) const;
 		bool LoadWeightsFromFile(const char *path);
 
-		//feed and backprop from Index[start] to Index[end - 1]
+		//feed and backprop from inputs[Index[start]] to inputs[Index[end - 1]]
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 			const int start = 0, int end = 0);
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
@@ -69,7 +89,7 @@ class NeuralNetwork
 
 		//backprop on one target
 		void BackProp(const vector<float> & target);
-		void BackProp(const vector<float> & target, const vector<MatrixXf> & mat);
+		void BackProp(const vector<float> & target, const vector<MatrixXf> & matrices);
 		//update weights using this gradient
 		void UpdateWeights(const float rate);
 		//update weights using another gradient
@@ -83,6 +103,5 @@ class NeuralNetwork
 		bool AllFinite();
 
 		//training with backpropagation
-		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float rate,
-			const float momentum = 0.0f, int batchSize = 0, const float l1 = 0.0f, const float l2 = 0.0f);
+		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
 };

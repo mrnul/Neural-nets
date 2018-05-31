@@ -39,6 +39,15 @@ void NormalizeColumnwise(vector<vector<float>> & data, const float a = 0.1f, con
 void NormalizeRowwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
 inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
 
+/*
+matrices : the weights of the neural network
+ex       : the excitation of each neuron (weighted sum)
+o        : the output of each neuron
+d        : delta of each neuron
+grad     : the gradient
+*/
+
+
 //returns the output o.back()
 const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices, vector<RowVectorXf> & ex, vector<RowVectorXf> & o);
 
@@ -46,7 +55,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad,
 	const vector<RowVectorXf> & ex, const vector<RowVectorXf> & o, vector<RowVectorXf> & d);
 
-//goes from index[start] to index[end - 1]
+//goes from inputs[index[start]] to inputs[index[end - 1]]
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
 	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
