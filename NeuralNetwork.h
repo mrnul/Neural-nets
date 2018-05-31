@@ -35,9 +35,10 @@ class NeuralNetwork
 		//index vector to shuffle inputs
 		vector<int> Index;
 
-		//other parameters
-		NNParams Params;
 	public:
+
+		NNParams Params;
+
 		NeuralNetwork();
 		NeuralNetwork(const vector<int> topology);
 
@@ -45,17 +46,9 @@ class NeuralNetwork
 		void Initialize(const vector<int> topology);
 		//initialize everything except for the weights
 		void InitializeNoWeights(const vector<int> topology);
-		void SetParams(const int batchsize, const float l1, const float l2, const float momentum, const float learningrate);
-		void SetParams(const NNParams & params);
-		void SetLearningRate(const float learningrate);
-		void SetL1(const float l1);
-		void SetL2(const float l2);
-		void SetMomentum(const float momentum);
-		void SetBatchSize(const int batchsize);
 		void SetMatrices(const vector<MatrixXf> & m);
 		void SetGrad(const vector<MatrixXf> & grad);
 		void SetPrevGrad(const vector<MatrixXf> & grad);
-		const NNParams & GetParams() const;
 		const vector<MatrixXf> & GetMatrices() const;
 		const vector<MatrixXf> & GetGrad() const;
 		const vector<MatrixXf> & GetPrevGrad() const;

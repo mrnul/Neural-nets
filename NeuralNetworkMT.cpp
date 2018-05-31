@@ -17,11 +17,6 @@ void NeuralNetworkMT::Initialize(const vector<int> topology, const int threads)
 	BeginThreads(threads);
 }
 
-NeuralNetwork & NeuralNetworkMT::GetMaster()
-{
-	return Master;
-}
-
 void NeuralNetworkMT::BeginThreads(const int threads)
 {
 	auto workingThreads = [&](ThreadData & Data)
@@ -39,8 +34,8 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 
 			//calculate the Gradient + l1term + l2term + momentum 
 			Data.NN.FeedAndBackProp(*Inputs, *Targets, Master.GetMatrices(), Master.GetIndexVector(), Data.Start, Data.End);
-			Data.NN.AddL1L2(Master.GetParams().L1, Master.GetParams().L2, Master.GetMatrices());
-			Data.NN.AddMomentum(Master.GetParams().Momentum);
+			Data.NN.AddL1L2(Master.Params.L1, Master.Params.L2, Master.GetMatrices());
+			Data.NN.AddMomentum(Master.Params.Momentum);
 			
 			Data.wakeUp.Reset();
 			Data.jobDone.Signal();
@@ -84,17 +79,17 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		Master.ResizeIndexVector(inputSize);
 
 	//shuffle index vector if needed
-	if (Master.GetParams().BatchSize != inputSize)
+	if (Master.Params.BatchSize != inputSize)
 		Master.ShuffleIndexVector();
 
 	int end = 0;
 	const int threadsCount = Threads.size();
-	const int howManyPerThread = Master.GetParams().BatchSize / threadsCount;
+	const int howManyPerThread = Master.Params.BatchSize / threadsCount;
 
 	while (end < inputSize)
 	{
 		const int start = end;
-		end = std::min(end + Master.GetParams().BatchSize, inputSize);
+		end = std::min(end + Master.Params.BatchSize, inputSize);
 
 		for (int t = 0; t < threadsCount; t++)
 		{
@@ -110,7 +105,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].jobDone.Wait();
 			Data[t].jobDone.Reset();
 			//now Grad is the Gradient + regularization terms + momentum term
-			Master.UpdateWeights(Data[t].NN.GetGrad(), Master.GetParams().LearningRate);
+			Master.UpdateWeights(Data[t].NN.GetGrad(), Master.Params.LearningRate);
 		}
 	}
 }

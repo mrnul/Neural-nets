@@ -25,15 +25,15 @@ class NeuralNetworkMT
 	private:
 		vector<thread> Threads;
 		vector<ThreadData> Data;
-		NeuralNetwork Master;
 		vector<int> Topology;
 		const vector<vector<float>> *Inputs;
 		const vector<vector<float>> *Targets;
 	public:
+		NeuralNetwork Master;
+
 		NeuralNetworkMT();
 		NeuralNetworkMT(const vector<int> topology, const int threads = thread::hardware_concurrency());
 		void Initialize(const vector<int> topology, const int threads = thread::hardware_concurrency());
-		NeuralNetwork & GetMaster();
 		void BeginThreads(const int threads = thread::hardware_concurrency());
 		void StopThreads();
 		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
