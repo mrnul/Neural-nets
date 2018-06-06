@@ -31,7 +31,7 @@ namespace NNFunctions
 	}
 }
 
-//each element is in range [a,b]
+//each element is scaled in [a,b]
 void NormalizeVector(vector<float> & vec, const float a = 0.1f, const float b = 0.9f);
 //each column is scaled in [a,b]
 void NormalizeColumnwise(vector<vector<float>> & data, const float a = 0.1f, const float b = 0.9f);
@@ -59,4 +59,4 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
 	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
-	const int start, int end);
+	const int start, const int end);

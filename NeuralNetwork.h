@@ -11,6 +11,8 @@ struct NNParams
 	float L2;
 	float Momentum;
 	float LearningRate;
+
+	NNParams() :BatchSize(0), L1(0), L2(0), Momentum(0), LearningRate(0) {}
 };
 
 class NeuralNetwork

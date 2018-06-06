@@ -2,7 +2,7 @@
 
 NeuralNetworkMT::NeuralNetworkMT()
 {
-
+	//hmmm...
 }
 
 NeuralNetworkMT::NeuralNetworkMT(const vector<int> topology, const int threads)
@@ -82,10 +82,11 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 	if (Master.Params.BatchSize != inputSize)
 		Master.ShuffleIndexVector();
 
-	int end = 0;
+	
 	const int threadsCount = Threads.size();
 	const int howManyPerThread = Master.Params.BatchSize / threadsCount;
 
+	int end = 0;
 	while (end < inputSize)
 	{
 		const int start = end;

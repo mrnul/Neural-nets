@@ -14,10 +14,11 @@ struct ThreadData
 
 	Event wakeUp;
 	Event jobDone;
-	bool mustQuit;
 
 	int Start;
 	int End;
+
+	bool mustQuit;
 };
 
 class NeuralNetworkMT

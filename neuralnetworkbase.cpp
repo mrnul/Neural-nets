@@ -14,6 +14,22 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 	}
 
 	const float denom = max - min;
+	if (denom == 0.0f)
+	{
+		if (max > b)
+		{
+			for (int i = 0; i < size; i++)
+				vec[i] = b;
+		}
+		else if (max < a)
+		{
+			for (int i = 0; i < size; i++)
+				vec[i] = a;
+		}
+
+		return;
+	}
+	
 	const float coeff = b - a;
 	for (int i = 0; i < size; i++)
 		vec[i] = coeff * (vec[i] - min) / denom + a;
@@ -23,7 +39,6 @@ void NormalizeColumnwise(vector<vector<float>> & data, const float a, const floa
 {
 	const int DataCount = data.size();
 	const int FeatureCount = data[0].size();
-	const float coeff = b - a;
 
 	for (int f = 0; f < FeatureCount; f++)
 	{
@@ -38,12 +53,7 @@ void NormalizeColumnwise(vector<vector<float>> & data, const float a, const floa
 		}
 
 		const float denom = max - min;
-		if (denom != 0.0f)
-		{
-			for (int d = 0; d < DataCount; d++)
-				data[d][f] = coeff * (data[d][f] - min) / denom + a;
-		}
-		else
+		if (denom == 0.0f)
 		{
 			if (max > b)
 			{
@@ -55,7 +65,12 @@ void NormalizeColumnwise(vector<vector<float>> & data, const float a, const floa
 				for (int d = 0; d < DataCount; d++)
 					data[d][f] = a;
 			}
+			continue;
 		}
+
+		const float coeff = b - a;
+		for (int d = 0; d < DataCount; d++)
+			data[d][f] = coeff * (data[d][f] - min) / denom + a;
 	}
 
 }
@@ -114,11 +129,8 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
 	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
-	const int start, int end)
+	const int start, const int end)
 {
-	if (end == 0)
-		end = inputs.size();
-
 	for (int i = start; i < end; i++)
 	{
 		NNFeedForward(inputs[index[i]], matrices, ex, o);
