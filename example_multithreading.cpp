@@ -1,3 +1,5 @@
+//MNIST data converted to csv format found here: https://pjreddie.com/projects/mnist-in-csv/
+
 #include <MyHeaders\NeuralNetworkMT.h>
 #include <fstream>
 #include <string>
