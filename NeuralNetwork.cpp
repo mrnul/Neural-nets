@@ -5,13 +5,13 @@ NeuralNetwork::NeuralNetwork()
 	std::srand((unsigned int)std::time(0));
 }
 
-NeuralNetwork::NeuralNetwork(const vector<int> topology)
+NeuralNetwork::NeuralNetwork(const vector<unsigned int> topology)
 {
 	std::srand((unsigned int)std::time(0));
 	Initialize(topology);
 }
 
-void NeuralNetwork::Initialize(const vector<int> topology)
+void NeuralNetwork::Initialize(const vector<unsigned int> topology)
 {
 	const int numOfLayers = topology.size();
 	const int lastIndex = numOfLayers - 1;
@@ -36,7 +36,9 @@ void NeuralNetwork::Initialize(const vector<int> topology)
 		//+1 for the bias of the prev layer
 		//initialize Matrices with random numbers
 		Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
-		Matrices[i] *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
+		Matrices[i].topRows(Matrices[i].rows() - 1) *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
+		//set biases to zero
+		Matrices[i].row(Matrices[i].rows() - 1).setZero();
 
 		//initialize Grad with value 0
 		Grad[i].setZero(topology[i - 1] + 1, topology[i]);
@@ -47,7 +49,7 @@ void NeuralNetwork::Initialize(const vector<int> topology)
 	O[lastIndex].setZero(topology[lastIndex]);
 }
 
-void NeuralNetwork::InitializeNoWeights(const vector<int> topology)
+void NeuralNetwork::InitializeNoWeights(const vector<unsigned int> topology)
 {
 	const int numOfLayers = topology.size();
 	const int lastIndex = numOfLayers - 1;
@@ -92,19 +94,32 @@ void NeuralNetwork::SetPrevGrad(const vector<MatrixXf> & grad)
 	PrevGrad = grad;
 }
 
-const vector<MatrixXf>& NeuralNetwork::GetMatrices() const
+vector<MatrixXf>& NeuralNetwork::GetMatrices()
 {
 	return Matrices;
 }
 
-const vector<MatrixXf>& NeuralNetwork::GetGrad() const
+vector<MatrixXf>& NeuralNetwork::GetGrad()
 {
 	return Grad;
 }
 
-const vector<MatrixXf>& NeuralNetwork::GetPrevGrad() const
+vector<MatrixXf>& NeuralNetwork::GetPrevGrad()
 {
 	return PrevGrad;
+}
+
+void NeuralNetwork::NormalizeGrad()
+{
+	const int size = Grad.size();
+	float norm = 0;
+
+	for (int i = 0; i < size; i++)
+		norm += Grad[i].squaredNorm();
+
+	norm = sqrt(norm);
+	for (int i = 0; i < size; i++)
+		Grad[i] /= norm;
 }
 
 void NeuralNetwork::SwapGradPrevGrad()
@@ -119,12 +134,7 @@ void NeuralNetwork::ZeroGrad()
 		Grad[l].setZero();
 }
 
-void NeuralNetwork::SetIndexVector(const vector<int> & index)
-{
-	Index = index;
-}
-
-const vector<int>& NeuralNetwork::GetIndexVector() const
+vector<int> & NeuralNetwork::GetIndexVector()
 {
 	return Index;
 }
@@ -283,7 +293,7 @@ void NeuralNetwork::AddL1L2(const float l1, const float l2, const vector<MatrixX
 {
 	//Grad = Grad + l1term + l2term
 	//don't regularize the bias
-	//topRows(Grad[l].rows() - 1) skips the last row
+	//topRows(Grad[l].rows() - 1) skips the last row (the biases)
 
 	const int lCount = Grad.size();
 

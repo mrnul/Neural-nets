@@ -5,12 +5,12 @@ NeuralNetworkMT::NeuralNetworkMT()
 	//hmmm...
 }
 
-NeuralNetworkMT::NeuralNetworkMT(const vector<int> topology, const int threads)
+NeuralNetworkMT::NeuralNetworkMT(const vector<unsigned int> topology, const int threads)
 {
 	Initialize(topology, threads);
 }
 
-void NeuralNetworkMT::Initialize(const vector<int> topology, const int threads)
+void NeuralNetworkMT::Initialize(const vector<unsigned int> topology, const int threads)
 {
 	Topology = topology;
 	Master.Initialize(topology);
@@ -36,7 +36,7 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 			Data.NN.FeedAndBackProp(*Inputs, *Targets, Master.GetMatrices(), Master.GetIndexVector(), Data.Start, Data.End);
 			Data.NN.AddL1L2(Master.Params.L1, Master.Params.L2, Master.GetMatrices());
 			Data.NN.AddMomentum(Master.Params.Momentum);
-			
+
 			Data.wakeUp.Reset();
 			Data.jobDone.Signal();
 		}
@@ -100,14 +100,23 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].wakeUp.Signal();
 		}
 
+		Master.ZeroGrad();
+		vector<MatrixXf> & Grad = Master.GetGrad();
+		const int L = Grad.size();
+
 		//wait for threads to finish and update the weights of Master
 		for (int t = 0; t < threadsCount; t++)
 		{
 			Data[t].jobDone.Wait();
 			Data[t].jobDone.Reset();
+			
 			//now Grad is the Gradient + regularization terms + momentum term
-			Master.UpdateWeights(Data[t].NN.GetGrad(), Master.Params.LearningRate);
+			for (int i = 0; i < L; i++)
+				Grad[i] += Data[t].NN.GetGrad()[i];
 		}
+
+		Master.NormalizeGrad();
+		Master.UpdateWeights(Master.Params.LearningRate);
 	}
 }
 

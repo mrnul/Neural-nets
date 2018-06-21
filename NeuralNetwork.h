@@ -42,22 +42,22 @@ class NeuralNetwork
 		NNParams Params;
 
 		NeuralNetwork();
-		NeuralNetwork(const vector<int> topology);
+		NeuralNetwork(const vector<unsigned int> topology);
 
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
-		void Initialize(const vector<int> topology);
+		void Initialize(const vector<unsigned int> topology);
 		//initialize everything except for the weights
-		void InitializeNoWeights(const vector<int> topology);
+		void InitializeNoWeights(const vector<unsigned int> topology);
 		void SetMatrices(const vector<MatrixXf> & m);
 		void SetGrad(const vector<MatrixXf> & grad);
 		void SetPrevGrad(const vector<MatrixXf> & grad);
-		const vector<MatrixXf> & GetMatrices() const;
-		const vector<MatrixXf> & GetGrad() const;
-		const vector<MatrixXf> & GetPrevGrad() const;
+		vector<MatrixXf> & GetMatrices();
+		vector<MatrixXf> & GetGrad();
+		vector<MatrixXf> & GetPrevGrad();
+		void NormalizeGrad();
 		void SwapGradPrevGrad();
 		void ZeroGrad();
-		void SetIndexVector(const vector<int> & index);
-		const vector<int> & GetIndexVector() const;
+		vector<int> & GetIndexVector();
 		void ShuffleIndexVector();
 		//resizes and initializes index vector 0...size-1
 		void ResizeIndexVector(const int size);

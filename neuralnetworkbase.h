@@ -29,6 +29,14 @@ namespace NNFunctions
 		const float af = Logistic(x);
 		return af * (1.0f - af);
 	}
+	inline float Linear(const float x)
+	{
+		return x;
+	}
+	inline float LinearDerivative(const float x)
+	{
+		return 1.0f;
+	}
 }
 
 //each element is scaled in [a,b]

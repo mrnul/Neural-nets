@@ -94,7 +94,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 	}
 
 	ex[lastIndex].noalias() = o[lastIndex - 1] * matrices[lastIndex];
-	o[lastIndex] = ex[lastIndex].unaryExpr(&NNFunctions::Logistic);
+	o[lastIndex] = ex[lastIndex].unaryExpr(&NNFunctions::Linear);
 
 	return o.back();
 }
@@ -107,7 +107,7 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 
 	//delta for output
 	for (int j = 0; j < outSize; j++)
-		d[L][j] = 2 * NNFunctions::LogisticDerivative(ex[L][j]) * (o[L][j] - target[j]);
+		d[L][j] = NNFunctions::LinearDerivative(ex[L][j]) * (o[L][j] - target[j]);
 
 	//grad for output
 	grad[L].noalias() += o[L - 1].transpose() * d[L];
