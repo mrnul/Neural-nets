@@ -2,4 +2,4 @@
 
 Example works with MNIST handwritten digit database converted to csv (https://pjreddie.com/projects/mnist-in-csv/)
 
-best result was 98.43% accuracy after 175 epochs (topology: 784 - 200 - 150 - 100 - 80 - 10 )
+best result was 98.62% accuracy after 175 epochs (topology: 784 - 500 - 200 - 10 )
