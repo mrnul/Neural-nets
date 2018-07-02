@@ -198,23 +198,33 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 	{
 		FeedForward(inputs[i]);
 
-		bool allCorrect = true;
 		const int outSize = O.back().size();
+		int tMax = 0;
+		int oMax = 0;
 		for (int r = 0; r < outSize; r++)
 		{
-			if ((targets[i][r] > 0.5 && O.back()[r] < 0.5) ||
-				(targets[i][r] < 0.5 && O.back()[r] > 0.5))
-			{
-				allCorrect = false;
-				break;
-			}
+			if (targets[i][tMax] < targets[i][r])
+				tMax = r;
+			if (O.back()[oMax] < O.back()[r])
+				oMax = r;
 		}
 
-		if (allCorrect)
+		if (outSize == 1)
+		{
+			if ((O.back()[0] > 0.5f && targets[i][0] > 0.5f)
+				||
+				(O.back()[0] < 0.5f && targets[i][0] < 0.5))
+			{
+				correct++;
+			}
+		}
+		else if (tMax == oMax)
+		{
 			correct++;
+		}
 	}
 
-	return correct * 100.0f / inputs.size();
+	return correct * 100.0f / inputSize;
 }
 
 bool NeuralNetwork::WriteWeightsToFile(const char * path) const

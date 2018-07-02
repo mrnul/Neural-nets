@@ -82,7 +82,6 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 	if (Master.Params.BatchSize != inputSize)
 		Master.ShuffleIndexVector();
 
-	
 	const int threadsCount = Threads.size();
 	const int howManyPerThread = Master.Params.BatchSize / threadsCount;
 

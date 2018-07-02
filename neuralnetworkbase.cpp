@@ -82,6 +82,32 @@ void NormalizeRowwise(vector<vector<float>> & data, const float a, const float b
 		NormalizeVector(data[i], a, b);
 }
 
+void StandarizeVector(vector<float> & vec)
+{
+	float mean = 0;
+	float sd = 0;
+	const int size = vec.size();
+	
+	for (int i = 0; i < size; i++)
+		mean += vec[i];
+	mean /= size;
+
+	for (int i = 0; i < size; i++)
+		sd += (vec[i] - mean) * (vec[i] - mean);
+	sd /= size - 1;
+	sd = sqrt(sd);
+
+	for (int i = 0; i < size; i++)
+		vec[i] = (vec[i] - mean) / sd;
+}
+
+void StandasizeVectors(vector<vector<float>> & data)
+{
+	const int size = data.size();
+	for (int i = 0; i < size; i++)
+		StandarizeVector(data[i]);
+}
+
 const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices, vector<RowVectorXf> & ex, vector<RowVectorXf> & o)
 {
 	std::copy(input.data(), input.data() + input.size(), o[0].data());
@@ -94,7 +120,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 	}
 
 	ex[lastIndex].noalias() = o[lastIndex - 1] * matrices[lastIndex];
-	o[lastIndex] = ex[lastIndex].unaryExpr(&NNFunctions::Linear);
+	o[lastIndex] = ex[lastIndex].unaryExpr(&NNFunctions::Logistic);
 
 	return o.back();
 }
@@ -107,7 +133,7 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 
 	//delta for output
 	for (int j = 0; j < outSize; j++)
-		d[L][j] = NNFunctions::LinearDerivative(ex[L][j]) * (o[L][j] - target[j]);
+		d[L][j] = NNFunctions::LogisticDerivative(ex[L][j]) * (o[L][j] - target[j]);
 
 	//grad for output
 	grad[L].noalias() += o[L - 1].transpose() * d[L];
