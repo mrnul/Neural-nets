@@ -37,15 +37,16 @@ namespace NNFunctions
 	{
 		return 1.0f;
 	}
-	/*inline float Softmax(const float x, const RowVectorXf & v)
+	inline float Softmax(const float x, const RowVectorXf & v)
 	{
-		return exp(x) / v.unaryExpr([](const float x) { return exp(x); }).sum();
+		const float C = v.maxCoeff();
+		return exp(x - C) / v.unaryExpr([&](const float x) { return exp(x - C); }).sum();
 	}
 	inline float SoftmaxDerivative(const float x, const RowVectorXf & v)
 	{
 		const float sm = Softmax(x, v);
 		return sm * (1 - sm);
-	}*/
+	}
 }
 
 //each element is scaled in [a,b]
@@ -57,7 +58,7 @@ void NormalizeRowwise(vector<vector<float>> & data, const float a = 0.1f, const 
 //Result Vector = (Input Vector - Mean) / Variance
 void StandarizeVector(vector<float> & vec);
 //for each row: Result Row = (Input Row - Mean) / Variance
-void StandasizeVectors(vector<vector<float>> & data);
+void StandarizeVectors(vector<vector<float>> & data);
 inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
 
 /*

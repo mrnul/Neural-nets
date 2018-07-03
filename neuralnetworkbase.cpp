@@ -101,7 +101,7 @@ void StandarizeVector(vector<float> & vec)
 		vec[i] = (vec[i] - mean) / sd;
 }
 
-void StandasizeVectors(vector<vector<float>> & data)
+void StandarizeVectors(vector<vector<float>> & data)
 {
 	const int size = data.size();
 	for (int i = 0; i < size; i++)
@@ -120,7 +120,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 	}
 
 	ex[lastIndex].noalias() = o[lastIndex - 1] * matrices[lastIndex];
-	o[lastIndex] = ex[lastIndex].unaryExpr(&NNFunctions::Logistic);
+	o[lastIndex] = ex[lastIndex].unaryExpr([&](const float x) { return NNFunctions::Softmax(x, ex[lastIndex]); });
 
 	return o.back();
 }
@@ -133,7 +133,7 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 
 	//delta for output
 	for (int j = 0; j < outSize; j++)
-		d[L][j] = NNFunctions::LogisticDerivative(ex[L][j]) * (o[L][j] - target[j]);
+		d[L][j] = (o[L][j] - target[j]);
 
 	//grad for output
 	grad[L].noalias() += o[L - 1].transpose() * d[L];
