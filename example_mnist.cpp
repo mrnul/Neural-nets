@@ -46,29 +46,28 @@ int main()
 	vector<vector<float>> data;
 	vector<vector<float>> targets;
 	LoadMNIST("mnist_train.csv", data, targets);
-
+	
 	vector<vector<float>> testdata;
 	vector<vector<float>> testtargets;
 	LoadMNIST("mnist_test.csv", testdata, testtargets);
 
-	//NormalizeRowwise(data);
-	//NormalizeRowwise(testdata);
 	StandarizeVectors(data);
 	StandarizeVectors(testdata);
 
-	NeuralNetworkMT nnmt({ data[0].size(), 500, 200, targets[0].size() });
+	NeuralNetworkMT nnmt({ 28 * 28, 200, 200, 10 });
 
 	nnmt.Master.Params.BatchSize = 50;
 	nnmt.Master.Params.L1 = 0.00001f;
 	nnmt.Master.Params.L2 = 0.0001f;
 	nnmt.Master.Params.LearningRate = 0.1f;
 	nnmt.Master.Params.Momentum = 0.8f;
+	nnmt.Master.Params.DropOutRate = 0.2f;
 
 	int epoch = 0;
 	while (true)
 	{
 		nnmt.Train(data, targets);
-		nnmt.Master.Params.LearningRate *= 0.98f;
+		nnmt.Master.Params.LearningRate *= 0.95f;
 		epoch++;
 
 		std::cout << nnmt.Master.SquareError(data, targets)
