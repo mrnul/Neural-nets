@@ -67,11 +67,16 @@ ex       : the excitation of each neuron (weighted sum)
 o        : the output of each neuron
 d        : delta of each neuron
 grad     : the gradient
+prevgrad : the previous gradient
 */
 
+void NNDropOut(RowVectorXf & o, const float DropOutRate);
+void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad);
+void NNAddMomentum(const float momentum, vector<MatrixXf> & grad, const vector<MatrixXf> & prevgrad);
 
 //returns the output o.back()
-const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices, vector<RowVectorXf> & ex, vector<RowVectorXf> & o);
+const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
+	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, const float DropOutRate);
 
 //finds the gradient
 void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad,
@@ -81,4 +86,4 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
 	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
-	const int start, const int end);
+	const int start, const int end, const float DropOutRate);
