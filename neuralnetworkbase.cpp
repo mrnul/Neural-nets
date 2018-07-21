@@ -108,15 +108,75 @@ void StandarizeVectors(vector<vector<float>> & data)
 		StandarizeVector(data[i]);
 }
 
-const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices, vector<RowVectorXf> & ex, vector<RowVectorXf> & o)
+void NNDropOut(RowVectorXf & o, const float DropOutRate)
+{
+	if (DropOutRate == 0.f)
+		return;
+
+	//-1 to ignore last neuron (don't dropout the bias)
+	const auto N = o.size() - 1;
+	for (auto n = 0; n < N; n++)
+	{
+		const float rnd = (float)rand() / RAND_MAX;
+		if (rnd <= DropOutRate)
+			o(n) = 0.f;
+	}
+}
+
+void NNAddMomentum(const float momentum, vector<MatrixXf>& grad, const vector<MatrixXf>& prevgrad)
+{
+	if (momentum == 0.f)
+		return;
+
+	const int lCount = grad.size();
+	for (int l = 0; l < lCount; l++)
+		grad[l] += momentum * prevgrad[l];
+}
+
+void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad)
+{
+	//Grad = Grad + l1term + l2term
+	//don't regularize the bias
+	//topRows(Grad[l].rows() - 1) skips the last row (the biases)
+
+	const int lCount = grad.size();
+
+	//both l1 and l2
+	if (l1 != 0.f && l2 != 0.f)
+	{
+		for (int l = 1; l < lCount; l++)
+			grad[l].topRows(grad[l].rows() - 1) +=
+			l1 * matrices[l].topRows(grad[l].rows() - 1).unaryExpr(&Sign)
+			+ l2 * matrices[l].topRows(grad[l].rows() - 1);
+	}
+	//only l1
+	else if (l1 != 0.f)
+	{
+		for (int l = 1; l < lCount; l++)
+			grad[l].topRows(grad[l].rows() - 1) += l1 * matrices[l].topRows(grad[l].rows() - 1).unaryExpr(&Sign);
+	}
+	//only l2
+	else if (l2 != 0.f)
+	{
+		for (int l = 1; l < lCount; l++)
+			grad[l].topRows(grad[l].rows() - 1) += l2 * matrices[l].topRows(grad[l].rows() - 1);
+	}
+}
+
+const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
+	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, const float DropOutRate)
 {
 	std::copy(input.data(), input.data() + input.size(), o[0].data());
+	
+	NNDropOut(o[0], DropOutRate);
 
 	const int lastIndex = matrices.size() - 1;
 	for (int m = 1; m < lastIndex; m++)
 	{
 		ex[m].noalias() = o[m - 1] * matrices[m];
 		o[m].head(o[m].size() - 1) = ex[m].unaryExpr(&NNFunctions::ELU);
+		
+		NNDropOut(o[m], DropOutRate);
 	}
 
 	ex[lastIndex].noalias() = o[lastIndex - 1] * matrices[lastIndex];
@@ -155,11 +215,11 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
 	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
-	const int start, const int end)
+	const int start, const int end, const float DropOutRate)
 {
 	for (int i = start; i < end; i++)
 	{
-		NNFeedForward(inputs[index[i]], matrices, ex, o);
+		NNFeedForward(inputs[index[i]], matrices, ex, o, DropOutRate);
 		NNBackProp(targets[index[i]], matrices, grad, ex, o, d);
 	}
 }

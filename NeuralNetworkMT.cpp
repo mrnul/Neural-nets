@@ -32,11 +32,14 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 			Data.NN.SwapGradPrevGrad();
 			Data.NN.ZeroGrad();
 
-			//calculate the Gradient + l1term + l2term + momentum 
-			Data.NN.FeedAndBackProp(*Inputs, *Targets, Master.GetMatrices(), Master.GetIndexVector(), Data.Start, Data.End);
-			Data.NN.AddL1L2(Master.Params.L1, Master.Params.L2, Master.GetMatrices());
-			Data.NN.AddMomentum(Master.Params.Momentum);
+			//calculate the Gradient
+			Data.NN.FeedAndBackProp(*Inputs, *Targets, Master.GetMatrices(), Master.GetIndexVector(), Data.Start, Data.End, Master.Params.DropOutRate);
 
+			//add regularization terms + momentum
+			NNAddL1L2(Master.Params.L1, Master.Params.L2, Master.GetMatrices(), Data.NN.GetGrad());
+			NNAddMomentum(Master.Params.Momentum, Data.NN.GetGrad(), Data.NN.GetPrevGrad());
+
+			//notify main thread
 			Data.wakeUp.Reset();
 			Data.jobDone.Signal();
 		}
@@ -99,6 +102,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].wakeUp.Signal();
 		}
 
+		Master.SwapGradPrevGrad();
 		Master.ZeroGrad();
 		vector<MatrixXf> & Grad = Master.GetGrad();
 		const int L = Grad.size();
@@ -109,7 +113,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 			Data[t].jobDone.Wait();
 			Data[t].jobDone.Reset();
 			
-			//now Grad is the Gradient + regularization terms + momentum term
+			//now Grad is the Gradient + regularization terms + momentum
 			for (int i = 0; i < L; i++)
 				Grad[i] += Data[t].NN.GetGrad()[i];
 		}

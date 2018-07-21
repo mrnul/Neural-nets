@@ -79,21 +79,6 @@ void NeuralNetwork::InitializeNoWeights(const vector<unsigned int> topology)
 	O[lastIndex].setZero(topology[lastIndex]);
 }
 
-void NeuralNetwork::SetMatrices(const vector<MatrixXf> & m)
-{
-	Matrices = m;
-}
-
-void NeuralNetwork::SetGrad(const vector<MatrixXf> & grad)
-{
-	Grad = grad;
-}
-
-void NeuralNetwork::SetPrevGrad(const vector<MatrixXf> & grad)
-{
-	PrevGrad = grad;
-}
-
 vector<MatrixXf>& NeuralNetwork::GetMatrices()
 {
 	return Matrices;
@@ -152,19 +137,9 @@ void NeuralNetwork::ResizeIndexVector(const int size)
 		Index[i] = i;
 }
 
-MatrixXf & NeuralNetwork::operator[](int layer)
-{
-	return Matrices[layer];
-}
-
 const RowVectorXf & NeuralNetwork::FeedForward(const vector<float> & input)
 {
-	return NNFeedForward(input, Matrices, Ex, O);
-}
-
-const RowVectorXf & NeuralNetwork::FeedForward(const vector<float>& input, const vector<MatrixXf> & matrices)
-{
-	return NNFeedForward(input, matrices, Ex, O);
+	return NNFeedForward(input, Matrices, Ex, O, 0.f);
 }
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
@@ -209,16 +184,7 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 				oMax = r;
 		}
 
-		if (outSize == 1)
-		{
-			if ((O.back()[0] > 0.5f && targets[i][0] > 0.5f)
-				||
-				(O.back()[0] < 0.5f && targets[i][0] < 0.5))
-			{
-				correct++;
-			}
-		}
-		else if (tMax == oMax)
+		if (tMax == oMax)
 		{
 			correct++;
 		}
@@ -260,16 +226,16 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 }
 
 void NeuralNetwork::FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-	const int start, int end)
+	const int start, int end, const float DropOutRate)
 {
-	NNFeedAndBackProp(inputs, targets, Matrices, Grad, Index, Ex, O, D, start, end);
+	NNFeedAndBackProp(inputs, targets, Matrices, Grad, Index, Ex, O, D, start, end, DropOutRate);
 }
 
 void NeuralNetwork::FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, const vector<int> & index,
-	const int start, int end)
+	const int start, int end, const float DropOutRate)
 {
-	NNFeedAndBackProp(inputs, targets, matrices, Grad, index, Ex, O, D, start, end);
+	NNFeedAndBackProp(inputs, targets, matrices, Grad, index, Ex, O, D, start, end, DropOutRate);
 }
 
 void NeuralNetwork::BackProp(const vector<float> & target)
@@ -282,61 +248,21 @@ void NeuralNetwork::BackProp(const vector<float> & target, const vector<MatrixXf
 	NNBackProp(target, matrices, Grad, Ex, O, D);
 }
 
-void NeuralNetwork::UpdateWeights(const vector<MatrixXf> & grad, const float rate)
+void NeuralNetwork::UpdateWeights(const float rate)
 {
 	const int MatricesSize = Matrices.size();
 	for (int l = 1; l < MatricesSize; l++)
-		Matrices[l] -= rate * grad[l];
-}
-
-void NeuralNetwork::UpdateWeights(const float rate)
-{
-	UpdateWeights(Grad, rate);
+		Matrices[l] -= rate * Grad[l];
 }
 
 void NeuralNetwork::AddL1L2(const float l1, const float l2)
 {
-	AddL1L2(l1, l2, Matrices);
-}
-
-void NeuralNetwork::AddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices)
-{
-	//Grad = Grad + l1term + l2term
-	//don't regularize the bias
-	//topRows(Grad[l].rows() - 1) skips the last row (the biases)
-
-	const int lCount = Grad.size();
-
-	//both l1 and l2
-	if (l1 != 0.0f && l2 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l].topRows(Grad[l].rows() - 1) +=
-			l1 * matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
-			+ l2 * matrices[l].topRows(Grad[l].rows() - 1);
-	}
-	//only l1
-	else if (l1 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l].topRows(Grad[l].rows() - 1) += l1 * matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
-	}
-	//only l2
-	else if (l2 != 0.0f)
-	{
-		for (int l = 1; l < lCount; l++)
-			Grad[l].topRows(Grad[l].rows() - 1) += l2 * matrices[l].topRows(Grad[l].rows() - 1);
-	}
+	NNAddL1L2(l1, l2, Matrices, Grad);
 }
 
 void NeuralNetwork::AddMomentum(const float momentum)
 {
-	if (momentum == 0.0f)
-		return;
-
-	const int lCount = Grad.size();
-	for (int l = 0; l < lCount; l++)
-		Grad[l] += momentum * PrevGrad[l];
+	NNAddMomentum(momentum, Grad, PrevGrad);
 }
 
 bool NeuralNetwork::AllFinite()
@@ -369,9 +295,10 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 		const int start = end;
 		end = std::min(end + Params.BatchSize, inputSize);
 
-		FeedAndBackProp(inputs, targets, start, end);
+		FeedAndBackProp(inputs, targets, start, end, Params.DropOutRate);
 		AddL1L2(Params.L1, Params.L2);
 		AddMomentum(Params.Momentum);
+		NormalizeGrad();
 		UpdateWeights(Params.LearningRate);
 
 		SwapGradPrevGrad();
