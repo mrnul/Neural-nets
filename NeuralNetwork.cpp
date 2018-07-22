@@ -13,8 +13,8 @@ NeuralNetwork::NeuralNetwork(const vector<unsigned int> topology)
 
 void NeuralNetwork::Initialize(const vector<unsigned int> topology)
 {
-	const int numOfLayers = topology.size();
-	const int lastIndex = numOfLayers - 1;
+	const auto numOfLayers = topology.size();
+	const auto lastIndex = numOfLayers - 1;
 
 	D.resize(numOfLayers);
 	Ex.resize(numOfLayers);
@@ -51,8 +51,8 @@ void NeuralNetwork::Initialize(const vector<unsigned int> topology)
 
 void NeuralNetwork::InitializeNoWeights(const vector<unsigned int> topology)
 {
-	const int numOfLayers = topology.size();
-	const int lastIndex = numOfLayers - 1;
+	const auto numOfLayers = topology.size();
+	const auto lastIndex = numOfLayers - 1;
 
 	D.resize(numOfLayers);
 	Ex.resize(numOfLayers);
@@ -96,7 +96,7 @@ vector<MatrixXf>& NeuralNetwork::GetPrevGrad()
 
 void NeuralNetwork::NormalizeGrad()
 {
-	const int size = Grad.size();
+	const auto size = Grad.size();
 	float norm = 0;
 
 	for (int i = 0; i < size; i++)
@@ -114,7 +114,7 @@ void NeuralNetwork::SwapGradPrevGrad()
 
 void NeuralNetwork::ZeroGrad()
 {
-	const int GradSize = Grad.size();
+	const auto GradSize = Grad.size();
 	for (int l = 1; l < GradSize; l++)
 		Grad[l].setZero();
 }
@@ -126,7 +126,7 @@ vector<int> & NeuralNetwork::GetIndexVector()
 
 void NeuralNetwork::ShuffleIndexVector()
 {
-	for (int i = Index.size() - 1; i > 0; i--)
+	for (auto i = Index.size() - 1; i > 0; i--)
 		std::swap(Index[i], Index[rand() % (i + 1)]);
 }
 
@@ -144,13 +144,13 @@ const RowVectorXf & NeuralNetwork::FeedForward(const vector<float> & input)
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
 {
-	const int inputCount = inputs.size();
+	const auto inputCount = inputs.size();
 	float ret = 0;
 	for (int i = 0; i < inputCount; i++)
 	{
 		FeedForward(inputs[i]);
 
-		const int resSize = O.back().size();
+		const auto resSize = O.back().size();
 
 		float error = 0;
 		for (int k = 0; k < resSize; k++)
@@ -168,12 +168,12 @@ float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vec
 float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
 {
 	int correct = 0;
-	const int inputSize = inputs.size();
+	const auto inputSize = inputs.size();
 	for (int i = 0; i < inputSize; i++)
 	{
 		FeedForward(inputs[i]);
 
-		const int outSize = O.back().size();
+		const auto outSize = O.back().size();
 		int tMax = 0;
 		int oMax = 0;
 		for (int r = 0; r < outSize; r++)
@@ -199,10 +199,10 @@ bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 	if (!file.is_open())
 		return false;
 
-	const int matricesCount = Matrices.size();
+	const auto matricesCount = Matrices.size();
 	for (int m = 1; m < matricesCount; m++)
 	{
-		const int curSize = Matrices[m].size() * sizeof(float);
+		const auto curSize = Matrices[m].size() * sizeof(float);
 		file.write((const char*)Matrices[m].data(), curSize);
 	}
 
@@ -215,10 +215,10 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 	if (!file.is_open())
 		return false;
 
-	const int matricesCount = Matrices.size();
+	const auto matricesCount = Matrices.size();
 	for (int m = 1; m < matricesCount; m++)
 	{
-		const int curSize = Matrices[m].size() * sizeof(float);
+		const auto curSize = Matrices[m].size() * sizeof(float);
 		file.read((char*)Matrices[m].data(), curSize);
 	}
 
@@ -243,14 +243,9 @@ void NeuralNetwork::BackProp(const vector<float> & target)
 	NNBackProp(target, Matrices, Grad, Ex, O, D);
 }
 
-void NeuralNetwork::BackProp(const vector<float> & target, const vector<MatrixXf> & matrices)
-{
-	NNBackProp(target, matrices, Grad, Ex, O, D);
-}
-
 void NeuralNetwork::UpdateWeights(const float rate)
 {
-	const int MatricesSize = Matrices.size();
+	const auto MatricesSize = Matrices.size();
 	for (int l = 1; l < MatricesSize; l++)
 		Matrices[l] -= rate * Grad[l];
 }
@@ -267,7 +262,7 @@ void NeuralNetwork::AddMomentum(const float momentum)
 
 bool NeuralNetwork::AllFinite()
 {
-	const int size = Matrices.size();
+	const auto size = Matrices.size();
 	for (int m = 0; m < size; m++)
 	{
 		if (!Matrices[m].allFinite())
@@ -279,7 +274,7 @@ bool NeuralNetwork::AllFinite()
 
 void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
 {
-	const int inputSize = inputs.size();
+	const int inputSize = (int)inputs.size();
 
 	//resize if needed
 	if (Index.size() != inputSize)

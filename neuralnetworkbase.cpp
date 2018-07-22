@@ -4,7 +4,7 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 {
 	float min = vec[0];
 	float max = vec[0];
-	const int size = vec.size();
+	const auto size = vec.size();
 	for (int i = 1; i < size; i++)
 	{
 		if (min > vec[i])
@@ -37,8 +37,8 @@ void NormalizeVector(vector<float> & vec, const float a, const float b)
 
 void NormalizeColumnwise(vector<vector<float>> & data, const float a, const float b)
 {
-	const int DataCount = data.size();
-	const int FeatureCount = data[0].size();
+	const auto DataCount = data.size();
+	const auto FeatureCount = data[0].size();
 
 	for (int f = 0; f < FeatureCount; f++)
 	{
@@ -77,7 +77,7 @@ void NormalizeColumnwise(vector<vector<float>> & data, const float a, const floa
 
 void NormalizeRowwise(vector<vector<float>> & data, const float a, const float b)
 {
-	const int size = data.size();
+	const auto size = data.size();
 	for (int i = 0; i < size; i++)
 		NormalizeVector(data[i], a, b);
 }
@@ -86,7 +86,7 @@ void StandarizeVector(vector<float> & vec)
 {
 	float mean = 0;
 	float sd = 0;
-	const int size = vec.size();
+	const auto size = vec.size();
 	
 	for (int i = 0; i < size; i++)
 		mean += vec[i];
@@ -103,7 +103,7 @@ void StandarizeVector(vector<float> & vec)
 
 void StandarizeVectors(vector<vector<float>> & data)
 {
-	const int size = data.size();
+	const auto size = data.size();
 	for (int i = 0; i < size; i++)
 		StandarizeVector(data[i]);
 }
@@ -115,7 +115,7 @@ void NNDropOut(RowVectorXf & o, const float DropOutRate)
 
 	//-1 to ignore last neuron (don't dropout the bias)
 	const auto N = o.size() - 1;
-	for (auto n = 0; n < N; n++)
+	for (int n = 0; n < N; n++)
 	{
 		const float rnd = (float)rand() / RAND_MAX;
 		if (rnd <= DropOutRate)
@@ -128,9 +128,9 @@ void NNAddMomentum(const float momentum, vector<MatrixXf>& grad, const vector<Ma
 	if (momentum == 0.f)
 		return;
 
-	const int lCount = grad.size();
-	for (int l = 0; l < lCount; l++)
-		grad[l] += momentum * prevgrad[l];
+	const auto lCount = grad.size();
+	for (auto l = 0; l < lCount; l++)
+		grad[l] += prevgrad[l] * momentum;
 }
 
 void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad)
@@ -139,7 +139,7 @@ void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices
 	//don't regularize the bias
 	//topRows(Grad[l].rows() - 1) skips the last row (the biases)
 
-	const int lCount = grad.size();
+	const auto lCount = grad.size();
 
 	//both l1 and l2
 	if (l1 != 0.f && l2 != 0.f)
@@ -170,7 +170,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 	
 	NNDropOut(o[0], DropOutRate);
 
-	const int lastIndex = matrices.size() - 1;
+	const auto lastIndex = matrices.size() - 1;
 	for (int m = 1; m < lastIndex; m++)
 	{
 		ex[m].noalias() = o[m - 1] * matrices[m];
@@ -188,8 +188,8 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad,
 	const vector<RowVectorXf> & ex, const vector<RowVectorXf> & o, vector<RowVectorXf> & d)
 {
-	const int L = d.size() - 1;
-	const int outSize = o[L].size();
+	const auto L = d.size() - 1;
+	const auto outSize = o[L].size();
 
 	//delta for output
 	for (int j = 0; j < outSize; j++)
@@ -199,7 +199,7 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 	grad[L].noalias() += o[L - 1].transpose() * d[L];
 
 	//delta for hidden
-	for (int l = L; l > 1; l--)
+	for (auto l = L; l > 1; l--)
 	{
 		//calc the sums
 		d[l - 1].noalias() = matrices[l].topRows(d[l - 1].size()) * d[l].transpose();

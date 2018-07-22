@@ -60,7 +60,7 @@ class NeuralNetwork
 		//resizes and initializes index vector 0...size-1
 		void ResizeIndexVector(const int size);
 
-		//uses members Ex , O , Matrices
+		//returns O.back()
 		const RowVectorXf & FeedForward(const vector<float> & input);
 
 		//stops calculation when error > cutoff
@@ -70,25 +70,25 @@ class NeuralNetwork
 		bool WriteWeightsToFile(const char *path) const;
 		bool LoadWeightsFromFile(const char *path);
 
-		//feed and backprop from inputs[Index[start]] to inputs[Index[end - 1]]
+		//feed and backprop from inputs[Index[start]] to inputs[Index[end - 1]], using *this* weights and index vector
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 			const int start, int end, const float DropOutRate);
+		//feed and backprop using other weights and index vector
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 			const vector<MatrixXf> & matrices, const vector<int> & index,
 			const int start, int end, const float DropOutRate);
 
 		//backprop on one target
 		void BackProp(const vector<float> & target);
-		void BackProp(const vector<float> & target, const vector<MatrixXf> & matrices);
-		//update weights using this gradient
+		//Wnew = Wold + rate * Grad
 		void UpdateWeights(const float rate);
-		//add l1 and l2 regularization terms to the gradient
+		//Grad += L1term + L2term
 		void AddL1L2(const float l1, const float l2);
-		//add momentum to the gradient
+		//Grad += PrevGrad * momentum
 		void AddMomentum(const float momentum);
 		//checks if all weights are finite (no nan or inf)
 		bool AllFinite();
 
-		//training with backpropagation
+		//training with backpropagation, using Params member
 		void Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets);
 };

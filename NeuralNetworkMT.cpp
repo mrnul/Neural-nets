@@ -57,7 +57,7 @@ void NeuralNetworkMT::BeginThreads(const int threads)
 
 void NeuralNetworkMT::StopThreads()
 {
-	const int threads = Threads.size();
+	const auto threads = Threads.size();
 	for (int i = 0; i < threads; i++)
 	{
 		Data[i].mustQuit = true;
@@ -75,7 +75,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 	Inputs = &inputs;
 	Targets = &targets;
 
-	const int inputSize = inputs.size();
+	const int inputSize = (int)inputs.size();
 
 	//resize if needed
 	if (Master.GetIndexVector().size() != inputSize)
@@ -85,8 +85,8 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 	if (Master.Params.BatchSize != inputSize)
 		Master.ShuffleIndexVector();
 
-	const int threadsCount = Threads.size();
-	const int howManyPerThread = Master.Params.BatchSize / threadsCount;
+	const auto threadsCount = Threads.size();
+	const int howManyPerThread = (int)(Master.Params.BatchSize / threadsCount);
 
 	int end = 0;
 	while (end < inputSize)
@@ -105,7 +105,7 @@ void NeuralNetworkMT::Train(const vector<vector<float>> & inputs, const vector<v
 		Master.SwapGradPrevGrad();
 		Master.ZeroGrad();
 		vector<MatrixXf> & Grad = Master.GetGrad();
-		const int L = Grad.size();
+		const auto L = Grad.size();
 
 		//wait for threads to finish and update the weights of Master
 		for (int t = 0; t < threadsCount; t++)
