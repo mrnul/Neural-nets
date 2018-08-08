@@ -4,18 +4,6 @@
 #include <fstream>
 #include <ctime>
 
-struct NNParams
-{
-	int BatchSize;
-	float L1;
-	float L2;
-	float Momentum;
-	float LearningRate;
-	float DropOutRate;
-
-	NNParams() :BatchSize(0), L1(0), L2(0), Momentum(0), LearningRate(0), DropOutRate(0) {}
-};
-
 class NeuralNetwork
 {
 	private:
