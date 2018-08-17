@@ -108,7 +108,7 @@ void StandarizeVectors(vector<vector<float>> & data)
 		StandarizeVector(data[i]);
 }
 
-void NNDropOut(RowVectorXf & o, const float DropOutRate)
+void NNDropOut(MatrixXf & o, const float DropOutRate)
 {
 	if (DropOutRate == 0.f)
 		return;
@@ -123,12 +123,13 @@ void NNDropOut(RowVectorXf & o, const float DropOutRate)
 	}
 }
 
-void NNAddMomentum(const float momentum, vector<MatrixXf>& grad, const vector<MatrixXf>& prevgrad)
+void NNAddMomentum(const float momentum, vector<MatrixXf> & grad, const vector<MatrixXf> & prevgrad)
 {
 	if (momentum == 0.f)
 		return;
 
 	const auto lCount = grad.size();
+	#pragma omp parallel for
 	for (auto l = 0; l < lCount; l++)
 		grad[l] += prevgrad[l] * momentum;
 }
@@ -144,6 +145,7 @@ void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices
 	//both l1 and l2
 	if (l1 != 0.f && l2 != 0.f)
 	{
+		#pragma omp parallel for
 		for (int l = 1; l < lCount; l++)
 			grad[l].topRows(grad[l].rows() - 1) +=
 			l1 * matrices[l].topRows(grad[l].rows() - 1).unaryExpr(&Sign)
@@ -152,19 +154,21 @@ void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices
 	//only l1
 	else if (l1 != 0.f)
 	{
+		#pragma omp parallel for
 		for (int l = 1; l < lCount; l++)
 			grad[l].topRows(grad[l].rows() - 1) += l1 * matrices[l].topRows(grad[l].rows() - 1).unaryExpr(&Sign);
 	}
 	//only l2
 	else if (l2 != 0.f)
 	{
+		#pragma omp parallel for
 		for (int l = 1; l < lCount; l++)
 			grad[l].topRows(grad[l].rows() - 1) += l2 * matrices[l].topRows(grad[l].rows() - 1);
 	}
 }
 
-const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
-	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, const float DropOutRate)
+const MatrixXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
+	vector<MatrixXf> & ex, vector<MatrixXf> & o, const float DropOutRate)
 {
 	std::copy(input.data(), input.data() + input.size(), o[0].data());
 	
@@ -174,7 +178,7 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 	for (int m = 1; m < lastIndex; m++)
 	{
 		ex[m].noalias() = o[m - 1] * matrices[m];
-		o[m].head(o[m].size() - 1) = ex[m].unaryExpr(&NNFunctions::ELU);
+		o[m].leftCols(o[m].size() - 1) = ex[m].unaryExpr(&NNFunctions::ELU);
 		
 		NNDropOut(o[m], DropOutRate);
 	}
@@ -186,14 +190,14 @@ const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<Matr
 }
 
 void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad,
-	const vector<RowVectorXf> & ex, const vector<RowVectorXf> & o, vector<RowVectorXf> & d)
+	const vector<MatrixXf> & ex, const vector<MatrixXf> & o, vector<MatrixXf> & d)
 {
 	const auto L = d.size() - 1;
 	const auto outSize = o[L].size();
 
 	//delta for output
 	for (int j = 0; j < outSize; j++)
-		d[L][j] = (o[L][j] - target[j]);
+		d[L](j) = (o[L](j) - target[j]);
 
 	//grad for output
 	grad[L].noalias() += o[L - 1].transpose() * d[L];
@@ -202,10 +206,11 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 	for (auto l = L; l > 1; l--)
 	{
 		//calc the sums
-		d[l - 1].noalias() = matrices[l].topRows(d[l - 1].size()) * d[l].transpose();
+		//(Matrices * D.transpose()).transpose() is faster than D * Matrices.transpose()
+		d[l - 1].noalias() = (matrices[l].topRows(d[l - 1].size()) * d[l].transpose()).transpose();
 
 		//multiply with derivatives
-		d[l - 1].array() *= ex[l - 1].unaryExpr(&NNFunctions::ELUDerivative).array();
+		d[l - 1] = d[l - 1].cwiseProduct(ex[l - 1].unaryExpr(&NNFunctions::ELUDerivative));
 
 		//grad for hidden
 		grad[l - 1].noalias() += o[l - 2].transpose() * d[l - 1];
@@ -214,7 +219,7 @@ void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices,
 
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
-	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
+	vector<MatrixXf> & ex, vector<MatrixXf> & o, vector<MatrixXf> & d,
 	const int start, const int end, const float DropOutRate)
 {
 	for (int i = start; i < end; i++)

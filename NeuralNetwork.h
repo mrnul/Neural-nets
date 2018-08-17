@@ -11,13 +11,13 @@ class NeuralNetwork
 		vector<MatrixXf> Matrices;
 
 		//each neuron's excitation
-		vector<RowVectorXf> Ex;
+		vector<MatrixXf> Ex;
 
 		//each neuron's output
-		vector<RowVectorXf> O;
+		vector<MatrixXf> O;
 
 		//each neuron's delta
-		vector<RowVectorXf> D;
+		vector<MatrixXf> D;
 
 		//the gradient
 		vector<MatrixXf> Grad;
@@ -31,16 +31,13 @@ class NeuralNetwork
 		NNParams Params;
 
 		NeuralNetwork();
-		NeuralNetwork(const vector<unsigned int> topology);
+		NeuralNetwork(const vector<unsigned int> topology, const int ThreadCount = 1);
 
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
-		void Initialize(const vector<unsigned int> topology);
-		//initialize everything except for the weights
-		void InitializeNoWeights(const vector<unsigned int> topology);
+		void Initialize(const vector<unsigned int> topology, const int ThreadCount = 1);
 		vector<MatrixXf> & GetMatrices();
 		vector<MatrixXf> & GetGrad();
 		vector<MatrixXf> & GetPrevGrad();
-		void NormalizeGrad();
 		void SwapGradPrevGrad();
 		void ZeroGrad();
 		vector<int> & GetIndexVector();
@@ -49,7 +46,7 @@ class NeuralNetwork
 		void ResizeIndexVector(const int size);
 
 		//returns O.back()
-		const RowVectorXf & FeedForward(const vector<float> & input);
+		const MatrixXf & FeedForward(const vector<float> & input);
 
 		//stops calculation when error > cutoff
 		float SquareError(const vector<vector<float>> &inputs, const vector<vector<float>> & targets, const float CutOff = INFINITY);
@@ -61,19 +58,15 @@ class NeuralNetwork
 		//feed and backprop from inputs[Index[start]] to inputs[Index[end - 1]], using *this* weights and index vector
 		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 			const int start, int end, const float DropOutRate);
-		//feed and backprop using other weights and index vector
-		void FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-			const vector<MatrixXf> & matrices, const vector<int> & index,
-			const int start, int end, const float DropOutRate);
 
 		//backprop on one target
 		void BackProp(const vector<float> & target);
 		//Wnew = Wold + rate * Grad
-		void UpdateWeights(const float rate);
+		void UpdateWeights();
 		//Grad += L1term + L2term
-		void AddL1L2(const float l1, const float l2);
+		void AddL1L2();
 		//Grad += PrevGrad * momentum
-		void AddMomentum(const float momentum);
+		void AddMomentum();
 		//checks if all weights are finite (no nan or inf)
 		bool AllFinite();
 

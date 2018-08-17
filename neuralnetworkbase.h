@@ -1,14 +1,14 @@
 #pragma once
 
-#include <Eigen\Dense>
+#include <Eigen\Core>
 #include <vector>
 
 using std::vector;
 using Eigen::MatrixXf;
-using Eigen::RowVectorXf;
 
 struct NNParams
 {
+	bool NormalizeGradient;
 	int BatchSize;
 	float L1;
 	float L2;
@@ -16,7 +16,7 @@ struct NNParams
 	float LearningRate;
 	float DropOutRate;
 
-	NNParams() :BatchSize(0), L1(0), L2(0), Momentum(0), LearningRate(0), DropOutRate(0) {}
+	NNParams() :BatchSize(0), L1(0), L2(0), Momentum(0), LearningRate(0), DropOutRate(0), NormalizeGradient(false) {}
 };
 
 namespace NNFunctions
@@ -49,15 +49,15 @@ namespace NNFunctions
 	{
 		return 1.0f;
 	}
-	inline float Softmax(const float x, const RowVectorXf & v)
+	inline float Softmax(const float x, const MatrixXf & v)
 	{
 		const float C = v.maxCoeff();
 		return exp(x - C) / v.unaryExpr([&](const float x) { return exp(x - C); }).sum();
 	}
-	inline float SoftmaxDerivative(const float x, const RowVectorXf & v)
+	inline float SoftmaxDerivative(const float x, const MatrixXf & v)
 	{
 		const float sm = Softmax(x, v);
-		return sm * (1 - sm);
+		return sm * (1.f - sm);
 	}
 }
 
@@ -82,20 +82,20 @@ grad     : the gradient
 prevgrad : the previous gradient
 */
 
-void NNDropOut(RowVectorXf & o, const float DropOutRate);
+void NNDropOut(MatrixXf & o, const float DropOutRate);
 void NNAddL1L2(const float l1, const float l2, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad);
 void NNAddMomentum(const float momentum, vector<MatrixXf> & grad, const vector<MatrixXf> & prevgrad);
 
 //returns the output o.back()
-const RowVectorXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
-	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, const float DropOutRate);
+const MatrixXf & NNFeedForward(const vector<float> & input, const vector<MatrixXf> & matrices,
+	vector<MatrixXf> & ex, vector<MatrixXf> & o, const float DropOutRate);
 
 //finds the gradient
 void NNBackProp(const vector<float> & target, const vector<MatrixXf> & matrices, vector<MatrixXf> & grad,
-	const vector<RowVectorXf> & ex, const vector<RowVectorXf> & o, vector<RowVectorXf> & d);
+	const vector<MatrixXf> & ex, const vector<MatrixXf> & o, vector<MatrixXf> & d);
 
 //goes from inputs[index[start]] to inputs[index[end - 1]]
 void NNFeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
 	const vector<MatrixXf> & matrices, vector<MatrixXf> & grad, const vector<int> & index,
-	vector<RowVectorXf> & ex, vector<RowVectorXf> & o, vector<RowVectorXf> & d,
+	vector<MatrixXf> & ex, vector<MatrixXf> & o, vector<MatrixXf> & d,
 	const int start, const int end, const float DropOutRate);
