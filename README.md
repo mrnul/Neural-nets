@@ -1,4 +1,4 @@
-# Feedforward neural network library using visual studio 2017 and eigen library with openmp
+# Feedforward and NARX neural network library using visual studio 2017 and eigen library with openmp
 
 Example (old) works with MNIST handwritten digit database converted to csv (https://pjreddie.com/projects/mnist-in-csv/)
 
