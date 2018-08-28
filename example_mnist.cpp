@@ -1,3 +1,10 @@
+#include <MyHeaders/NeuralNetwork.h>
+#include <Windows.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <iostream>
+
 bool LoadMNIST(const char * path, vector<vector<float>> & data, vector<vector<float>> & targets)
 {
 	using namespace std;
