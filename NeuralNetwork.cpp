@@ -20,88 +20,65 @@ void NeuralNetwork::Initialize(const vector<unsigned int> topology, const int Th
 	omp_set_num_threads(ThreadCount);
 #endif
 
-	D.resize(numOfLayers);
-	Ex.resize(numOfLayers);
-	O.resize(numOfLayers);
-	Matrices.resize(numOfLayers);
-	Grad.resize(numOfLayers);
-	PrevGrad.resize(numOfLayers);
+	Base.D.resize(numOfLayers);
+	Base.Ex.resize(numOfLayers);
+	Base.O.resize(numOfLayers);
+	Base.Matrices.resize(numOfLayers);
+	Base.Grad.resize(numOfLayers);
+	Base.PrevGrad.resize(numOfLayers);
 
 	for (int i = 1; i < numOfLayers; i++)
 	{
 		//these don't need a bias node
-		D[i].setZero(1, topology[i]);
-		Ex[i].setZero(1, topology[i]);
+		Base.D[i].setZero(1, topology[i]);
+		Base.Ex[i].setZero(1, topology[i]);
 
 		//these need a bias node
-		O[i - 1].setZero(1, topology[i - 1] + 1);
-		O[i - 1](topology[i - 1]) = 1;
+		Base.O[i - 1].setZero(1, topology[i - 1] + 1);
+		Base.O[i - 1](topology[i - 1]) = 1;
 
 		//+1 for the bias of the prev layer
 		//initialize Matrices with random numbers
-		Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
-		Matrices[i].topRows(Matrices[i].rows() - 1) *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
+		Base.Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
+		Base.Matrices[i].topRows(Base.Matrices[i].rows() - 1) *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
 		//set biases to zero
-		Matrices[i].row(Matrices[i].rows() - 1).setZero();
+		Base.Matrices[i].row(Base.Matrices[i].rows() - 1).setZero();
 
 		//initialize Grad with value 0
-		Grad[i].setZero(topology[i - 1] + 1, topology[i]);
-		PrevGrad[i].setZero(topology[i - 1] + 1, topology[i]);
+		Base.Grad[i].setZero(topology[i - 1] + 1, topology[i]);
+		Base.PrevGrad[i].setZero(topology[i - 1] + 1, topology[i]);
 	}
 
 	//last layer does not have a bias node
-	O[lastIndex].setZero(1, topology[lastIndex]);
-}
-
-vector<MatrixXf>& NeuralNetwork::GetMatrices()
-{
-	return Matrices;
-}
-
-vector<MatrixXf>& NeuralNetwork::GetGrad()
-{
-	return Grad;
-}
-
-vector<MatrixXf>& NeuralNetwork::GetPrevGrad()
-{
-	return PrevGrad;
+	Base.O[lastIndex].setZero(1, topology[lastIndex]);
 }
 
 void NeuralNetwork::SwapGradPrevGrad()
 {
-	std::swap(Grad, PrevGrad);
+	std::swap(Base.Grad, Base.PrevGrad);
 }
 
 void NeuralNetwork::ZeroGrad()
 {
-	const auto GradSize = Grad.size();
+	const auto GradSize = Base.Grad.size();
 	#pragma omp parallel for
 	for (int l = 1; l < GradSize; l++)
-		Grad[l].setZero();
-}
-
-vector<int> & NeuralNetwork::GetIndexVector()
-{
-	return Index;
+		Base.Grad[l].setZero();
 }
 
 void NeuralNetwork::ShuffleIndexVector()
 {
-	for (auto i = Index.size() - 1; i > 0; i--)
-		std::swap(Index[i], Index[rand() % (i + 1)]);
+	neuralnetworkbase::ShuffleIndexVector(Base);
 }
 
 void NeuralNetwork::ResizeIndexVector(const int size)
 {
-	Index.resize(size);
-	for (int i = 0; i < size; i++)
-		Index[i] = i;
+	neuralnetworkbase::InitializeIndexVector(Base, size);
 }
 
 const MatrixXf & NeuralNetwork::FeedForward(const vector<float> & input)
 {
-	return NNFeedForward(input, Matrices, Ex, O, 0.f);
+	return neuralnetworkbase::FeedForward(Base, input, 0.f);
 }
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
@@ -112,11 +89,11 @@ float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vec
 	{
 		FeedForward(inputs[i]);
 
-		const auto resSize = O.back().size();
+		const auto resSize = Base.O.back().size();
 
 		float error = 0;
 		for (int k = 0; k < resSize; k++)
-			error += (targets[i][k] - O.back()(k)) * (targets[i][k] - O.back()(k));
+			error += (targets[i][k] - Base.O.back()(k)) * (targets[i][k] - Base.O.back()(k));
 
 		ret += error;
 
@@ -135,21 +112,11 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 	{
 		FeedForward(inputs[i]);
 
-		const auto outSize = O.back().size();
-		int tMax = 0;
-		int oMax = 0;
-		for (int r = 0; r < outSize; r++)
-		{
-			if (targets[i][tMax] < targets[i][r])
-				tMax = r;
-			if (O.back()(oMax) < O.back()(r))
-				oMax = r;
-		}
+		const int oMax = neuralnetworkbase::IndexOfMax(Base.O.back());
+		const int tMax = neuralnetworkbase::IndexOfMax(targets[i]);
 
 		if (tMax == oMax)
-		{
 			correct++;
-		}
 	}
 
 	return correct * 100.0f / inputSize;
@@ -161,11 +128,11 @@ bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 	if (!file.is_open())
 		return false;
 
-	const auto matricesCount = Matrices.size();
+	const auto matricesCount = Base.Matrices.size();
 	for (int m = 1; m < matricesCount; m++)
 	{
-		const auto curSize = Matrices[m].size() * sizeof(float);
-		file.write((const char*)Matrices[m].data(), curSize);
+		const auto curSize = Base.Matrices[m].size() * sizeof(float);
+		file.write((const char*)Base.Matrices[m].data(), curSize);
 	}
 
 	return true;
@@ -177,70 +144,40 @@ bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 	if (!file.is_open())
 		return false;
 
-	const auto matricesCount = Matrices.size();
+	const auto matricesCount = Base.Matrices.size();
 	for (int m = 1; m < matricesCount; m++)
 	{
-		const auto curSize = Matrices[m].size() * sizeof(float);
-		file.read((char*)Matrices[m].data(), curSize);
+		const auto curSize = Base.Matrices[m].size() * sizeof(float);
+		file.read((char*)Base.Matrices[m].data(), curSize);
 	}
 
 	return true;
 }
 
 void NeuralNetwork::FeedAndBackProp(const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-	const int start, int end, const float DropOutRate)
+	const int start, int end)
 {
-	NNFeedAndBackProp(inputs, targets, Matrices, Grad, Index, Ex, O, D, start, end, DropOutRate);
+	neuralnetworkbase::FeedAndBackProp(Base, inputs, targets, start, end, Params.DropOutRate);
 }
 
 void NeuralNetwork::BackProp(const vector<float> & target)
 {
-	NNBackProp(target, Matrices, Grad, Ex, O, D);
+	neuralnetworkbase::BackProp(Base, target);
 }
 
 void NeuralNetwork::UpdateWeights()
 {
-	float norm = 1.f;
-	if (Params.NormalizeGradient)
-	{
-		float tmp = 0;
-		const auto size = Grad.size();
-
-		#pragma omp parallel for reduction (+:tmp)
-		for (int i = 0; i < size; i++)
-			tmp = tmp + Grad[i].squaredNorm();
-
-		norm = sqrt(tmp);
-	}
-
-	const float coeff = Params.LearningRate / norm;
-	const auto MatricesSize = Matrices.size();
-
-	#pragma omp parallel for
-	for (int l = 1; l < MatricesSize; l++)
-		Matrices[l] -= coeff * Grad[l];
+	neuralnetworkbase::UpdateWeights(Base, Params.LearningRate, Params.NormalizeGradient);
 }
 
 void NeuralNetwork::AddL1L2()
 {
-	NNAddL1L2(Params.L1, Params.L2, Matrices, Grad);
+	neuralnetworkbase::AddL1L2(Base, Params.L1, Params.L2);
 }
 
 void NeuralNetwork::AddMomentum()
 {
-	NNAddMomentum(Params.Momentum, Grad, PrevGrad);
-}
-
-bool NeuralNetwork::AllFinite()
-{
-	const auto size = Matrices.size();
-	for (int m = 0; m < size; m++)
-	{
-		if (!Matrices[m].allFinite())
-			return false;
-	}
-
-	return true;
+	neuralnetworkbase::AddMomentum(Base, Params.Momentum);
 }
 
 void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
@@ -248,7 +185,7 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 	const int inputSize = (int)inputs.size();
 
 	//resize if needed
-	if (Index.size() != inputSize)
+	if (Base.Index.size() != inputSize)
 		ResizeIndexVector(inputSize);
 
 	//shuffle index vector if needed
@@ -261,7 +198,7 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 		const int start = end;
 		end = std::min(end + Params.BatchSize, inputSize);
 
-		FeedAndBackProp(inputs, targets, start, end, Params.DropOutRate);
+		FeedAndBackProp(inputs, targets, start, end);
 		AddL1L2();
 		AddMomentum();
 		UpdateWeights();
