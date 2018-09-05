@@ -104,15 +104,18 @@ namespace neuralnetworkbase
 	//for each row: Result Row = (Input Row - Mean) / Variance
 	void StandarizeVectors(vector<vector<float>> & data);
 	inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
-	//creates maps for encoding and decoding, returns the number of unique features
-	int OneHotEncDec(const char * path, map<char, vector<float> > & enc, map< vector<float>, char> & dec, vector<vector<float>> & data);
+	//loads all data, creates maps for encoding and decoding, returns the number of unique elements
+	int OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<unsigned char> & data);
 	//returns the index of the max element
 	int IndexOfMax(const MatrixXf & v);
 	int IndexOfMax(const vector<float> & v);
 
+	void InitializeBase(NNBase & base, vector<int> topology, const int threadCount = 0);
 	void InitializeIndexVector(NNBase & base, const int size);
 	void ShuffleIndexVector(NNBase & base);
+	void ZeroGradAndSwap(NNBase & base);
 
+	
 	void DropOut(MatrixXf & O, const float DropOutRate);
 	void AddL1L2(NNBase & base, const float l1, const float l2);
 	void AddMomentum(NNBase & base, const float momentum);
@@ -123,8 +126,4 @@ namespace neuralnetworkbase
 
 	//finds the gradient
 	void BackProp(NNBase & base, const vector<float> & target);
-
-	//goes from inputs[index[start]] to inputs[index[end - 1]]
-	void FeedAndBackProp(NNBase & base, const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-		const int start, const int end, const float DropOutRate);
 }

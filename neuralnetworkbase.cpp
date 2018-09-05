@@ -110,38 +110,32 @@ namespace neuralnetworkbase
 			StandarizeVector(data[i]);
 	}
 
-	int OneHotEncDec(const char * path, map<char, vector<float>>& enc, map<vector<float>, char>& dec, vector<vector<float>>& data)
+	int OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<unsigned char> & data)
 	{
-		ifstream file(path);
+		ifstream file(path, std::ios::in | std::ios::binary);
 		if (!file.is_open())
-			return 0;
+			return -1;
 
-		while (!file.eof())
+		//the ID of the vector [0, 0, 0, 1, 0, 0] is 3
+		//ID begins on 0 if maps are empty
+		//else ID is the last + 1
+		int ID = dec.empty() ? 0 : (--dec.end())->first + 1;
+		while (true)
 		{
-			const int tmp = file.get();
-			//if (!isprint(tmp))
-				//continue;
+			unsigned char tmp;
+			if (!file.read((char *)&tmp, 1))
+				break;
 
-			enc[tmp] = vector<float>();
-		}
+			//if element does not exist in maps add it
+			if (enc.find(tmp) == enc.end())
+			{
+				enc[tmp] = ID;
+				dec[ID] = tmp;
+				ID++;
+			}
 
-		int i = 0;
-		for (auto & x : enc)
-		{
-			x.second = vector<float>(enc.size());
-			x.second[i] = 1.f;
-			dec[x.second] = x.first;
-			i++;
-		}
-
-		file.clear();
-		file.seekg(0);
-		while (!file.eof())
-		{
-			const int tmp = file.get();
-			//if (!isprint(tmp))
-				//continue;
-			data.push_back(enc[tmp]);
+			//add byte in data vector
+			data.push_back(tmp);
 		}
 
 		return (int)enc.size();
@@ -177,6 +171,49 @@ namespace neuralnetworkbase
 		return iMax;
 	}
 
+	void InitializeBase(NNBase & base, vector<int> topology, const int threadCount)
+	{
+		const auto numOfLayers = topology.size();
+		const auto lastIndex = numOfLayers - 1;
+
+		#ifdef _OPENMP
+		if (threadCount)
+			omp_set_num_threads(threadCount);
+		#endif
+
+		base.D.resize(numOfLayers);
+		base.Ex.resize(numOfLayers);
+		base.O.resize(numOfLayers);
+		base.Matrices.resize(numOfLayers);
+		base.Grad.resize(numOfLayers);
+		base.PrevGrad.resize(numOfLayers);
+
+		for (int i = 1; i < numOfLayers; i++)
+		{
+			//these don't need a bias node
+			base.D[i].setZero(1, topology[i]);
+			base.Ex[i].setZero(1, topology[i]);
+
+			//these need a bias node
+			base.O[i - 1].setZero(1, topology[i - 1] + 1);
+			base.O[i - 1](topology[i - 1]) = 1;
+
+			//+1 for the bias of the prev layer
+			//initialize Matrices with random numbers
+			base.Matrices[i].setRandom(topology[i - 1] + 1, topology[i]);
+			base.Matrices[i].topRows(base.Matrices[i].rows() - 1) *= sqrt(12.0f / (topology[i - 1] + 1.0f + topology[i]));
+			//set biases to zero
+			base.Matrices[i].row(base.Matrices[i].rows() - 1).setZero();
+
+			//initialize Grad with value 0
+			base.Grad[i].setZero(topology[i - 1] + 1, topology[i]);
+			base.PrevGrad[i].setZero(topology[i - 1] + 1, topology[i]);
+		}
+
+		//last layer does not have a bias node
+		base.O[lastIndex].setZero(1, topology[lastIndex]);
+	}
+
 	void InitializeIndexVector(NNBase & base, const int size)
 	{
 		base.Index.resize(size);
@@ -187,6 +224,15 @@ namespace neuralnetworkbase
 	void ShuffleIndexVector(NNBase & base)
 	{
 		std::random_shuffle(base.Index.begin(), base.Index.end());
+	}
+
+	void ZeroGradAndSwap(NNBase & base)
+	{
+		const auto GradSize = base.Grad.size();
+		for (int l = 1; l < GradSize; l++)
+			base.Grad[l].setZero();
+
+		std::swap(base.Grad, base.PrevGrad);
 	}
 
 	void DropOut(MatrixXf & O, const float DropOutRate)
@@ -317,16 +363,6 @@ namespace neuralnetworkbase
 
 			//grad for hidden
 			base.Grad[l - 1].noalias() += base.O[l - 2].transpose() * base.D[l - 1];
-		}
-	}
-
-	void FeedAndBackProp(NNBase & base, const vector<vector<float>> & inputs, const vector<vector<float>> & targets,
-		const int start, const int end, const float DropOutRate)
-	{
-		for (int i = start; i < end; i++)
-		{
-			FeedForward(base, inputs[base.Index[i]], DropOutRate);
-			BackProp(base, targets[base.Index[i]]);
 		}
 	}
 }
