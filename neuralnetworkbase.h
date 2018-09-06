@@ -115,6 +115,9 @@ namespace neuralnetworkbase
 	void ShuffleIndexVector(NNBase & base);
 	void ZeroGradAndSwap(NNBase & base);
 
+	bool WriteWeightsToFile(const NNBase & base, const char * path);
+	bool LoadWeightsFromFile(NNBase & base, const char * path);
+
 	
 	void DropOut(MatrixXf & O, const float DropOutRate);
 	void AddL1L2(NNBase & base, const float l1, const float l2);

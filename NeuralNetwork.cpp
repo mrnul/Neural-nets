@@ -64,34 +64,12 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 
 bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 {
-	std::ofstream file(path, std::ios::out | std::ios::binary);
-	if (!file.is_open())
-		return false;
-
-	const auto matricesCount = Base.Matrices.size();
-	for (int m = 1; m < matricesCount; m++)
-	{
-		const auto curSize = Base.Matrices[m].size() * sizeof(float);
-		file.write((const char*)Base.Matrices[m].data(), curSize);
-	}
-
-	return true;
+	return neuralnetworkbase::WriteWeightsToFile(Base, path);
 }
 
 bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 {
-	std::ifstream file(path, std::ios::in | std::ios::binary);
-	if (!file.is_open())
-		return false;
-
-	const auto matricesCount = Base.Matrices.size();
-	for (int m = 1; m < matricesCount; m++)
-	{
-		const auto curSize = Base.Matrices[m].size() * sizeof(float);
-		file.read((char*)Base.Matrices[m].data(), curSize);
-	}
-
-	return true;
+	return neuralnetworkbase::LoadWeightsFromFile(Base, path);
 }
 
 void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)

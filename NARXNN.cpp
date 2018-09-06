@@ -60,6 +60,16 @@ void NARXNN::Initialize(vector<int> topology, const unsigned int pastcount, cons
 	neuralnetworkbase::InitializeBase(Base, topology, ThreadCount);
 }
 
+bool NARXNN::WriteWeightsToFile(const char * path) const
+{
+	return neuralnetworkbase::WriteWeightsToFile(Base, path);
+}
+
+bool NARXNN::LoadWeightsFromFile(const char * path)
+{
+	return neuralnetworkbase::LoadWeightsFromFile(Base, path);
+}
+
 const MatrixXf & NARXNN::Evaluate(const vector<float> & input)
 {
 	return neuralnetworkbase::FeedForward(Base, input, 0.f);
@@ -91,8 +101,6 @@ void NARXNN::Generate(const char * path, vector<unsigned char> & feed, const int
 
 		ShiftAndAddToInput(Base.O.back());
 	}
-
-	ofile.flush();
 }
 
 float NARXNN::SquareError(const float CutOff)
@@ -104,7 +112,7 @@ float NARXNN::SquareError(const float CutOff)
 		PrepareInput(i);
 		PrepareTarget(i + 1);
 
-		neuralnetworkbase::FeedForward(Base, Input, Params.DropOutRate);
+		Evaluate(Input);
 
 		const auto resSize = Base.O.back().size();
 

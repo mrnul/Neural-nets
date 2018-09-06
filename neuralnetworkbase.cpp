@@ -235,6 +235,38 @@ namespace neuralnetworkbase
 		std::swap(base.Grad, base.PrevGrad);
 	}
 
+	bool WriteWeightsToFile(const NNBase & base, const char * path)
+	{
+		std::ofstream file(path, std::ios::out | std::ios::binary);
+		if (!file.is_open())
+			return false;
+
+		const auto matricesCount = base.Matrices.size();
+		for (int m = 1; m < matricesCount; m++)
+		{
+			const auto curSize = base.Matrices[m].size() * sizeof(float);
+			file.write((const char*)base.Matrices[m].data(), curSize);
+		}
+
+		return true;
+	}
+
+	bool LoadWeightsFromFile(NNBase & base, const char * path)
+	{
+		std::ifstream file(path, std::ios::in | std::ios::binary);
+		if (!file.is_open())
+			return false;
+
+		const auto matricesCount = base.Matrices.size();
+		for (int m = 1; m < matricesCount; m++)
+		{
+			const auto curSize = base.Matrices[m].size() * sizeof(float);
+			file.read((char*)base.Matrices[m].data(), curSize);
+		}
+
+		return true;
+	}
+
 	void DropOut(MatrixXf & O, const float DropOutRate)
 	{
 		if (DropOutRate == 0.f)

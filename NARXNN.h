@@ -41,6 +41,9 @@ class NARXNN
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
 		void Initialize(vector<int> topology, const unsigned int pastcount, const int ThreadCount = 1);
 
+		bool WriteWeightsToFile(const char * path) const;
+		bool LoadWeightsFromFile(const char * path);
+
 		//returns O.back()
 		const MatrixXf & Evaluate(const vector<float> & input);
 		void Generate(const char * path, vector<unsigned char> & feed, const int count);
