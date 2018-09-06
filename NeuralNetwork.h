@@ -1,8 +1,6 @@
 #pragma once
 
 #include <MyHeaders/neuralnetworkbase.h>
-#include <fstream>
-#include <ctime>
 
 class NeuralNetwork
 {

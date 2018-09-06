@@ -1,11 +1,6 @@
 #pragma once
 
 #include <MyHeaders/neuralnetworkbase.h>
-#include <fstream>
-#include <ctime>
-#include <iostream>
-#include <map>
-using std::map;
 
 class NARXNN
 {

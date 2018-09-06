@@ -3,6 +3,7 @@
 #include <Eigen\Core>
 #include <vector>
 #include <fstream>
+#include <ctime>
 #include <map>
 
 using std::map;
