@@ -13,6 +13,7 @@ using Eigen::MatrixXf;
 
 namespace neuralnetworkbase
 {
+	//Basic structure with the necessary functions
 	struct NNBase
 	{
 		//each layer's matrix
@@ -33,6 +34,23 @@ namespace neuralnetworkbase
 
 		//index vector to shuffle inputs
 		vector<int> Index;
+
+		void InitializeBase(vector<int> topology, const int threadCount = 0);
+		void InitializeIndexVector(const int size);
+		void ShuffleIndexVector();
+		void ZeroGradAndSwap();
+
+		bool WriteWeightsToFile(const char * path) const;
+		bool LoadWeightsFromFile(const char * path);
+
+		void Dropout(MatrixXf & layer, const float DropOutRate);
+		void AddL1L2(const float l1, const float l2);
+		void AddMomentum(const float momentum);
+		void UpdateWeights(const float rate, const bool NormalizeGrad);
+
+		//returns the output o.back()
+		const MatrixXf & FeedForward(const vector<float> & input, const float DropOutRate);
+		void Backprop(const vector<float> & target);
 	};
 
 	struct NNParams
@@ -45,9 +63,10 @@ namespace neuralnetworkbase
 		int BatchSize;
 		bool NormalizeGradient;
 
-		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0), DropOutRate(0), BatchSize(0), NormalizeGradient(false) {}
+		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0.001f), DropOutRate(0), BatchSize(1), NormalizeGradient(true) {}
 	};
 
+	//Activation functions and their derivatives
 	namespace functions
 	{
 		inline float ELU(const float x)
@@ -110,24 +129,4 @@ namespace neuralnetworkbase
 	//returns the index of the max element
 	int IndexOfMax(const MatrixXf & v);
 	int IndexOfMax(const vector<float> & v);
-
-	void InitializeBase(NNBase & base, vector<int> topology, const int threadCount = 0);
-	void InitializeIndexVector(NNBase & base, const int size);
-	void ShuffleIndexVector(NNBase & base);
-	void ZeroGradAndSwap(NNBase & base);
-
-	bool WriteWeightsToFile(const NNBase & base, const char * path);
-	bool LoadWeightsFromFile(NNBase & base, const char * path);
-
-	
-	void DropOut(MatrixXf & O, const float DropOutRate);
-	void AddL1L2(NNBase & base, const float l1, const float l2);
-	void AddMomentum(NNBase & base, const float momentum);
-	void UpdateWeights(NNBase & base, const float rate, const bool NormalizeGrad);
-
-	//returns the output o.back()
-	const MatrixXf & FeedForward(NNBase & base, const vector<float> & input, const float DropOutRate);
-
-	//finds the gradient
-	void BackProp(NNBase & base, const vector<float> & target);
 }

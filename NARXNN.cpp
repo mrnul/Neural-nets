@@ -57,22 +57,22 @@ void NARXNN::Initialize(vector<int> topology, const unsigned int pastcount, cons
 	topology[0] = topology[0] * (PastCount + 1);
 	Input.resize(topology[0]);
 
-	neuralnetworkbase::InitializeBase(Base, topology, ThreadCount);
+	Base.InitializeBase(topology, ThreadCount);
 }
 
 bool NARXNN::WriteWeightsToFile(const char * path) const
 {
-	return neuralnetworkbase::WriteWeightsToFile(Base, path);
+	return Base.WriteWeightsToFile(path);
 }
 
 bool NARXNN::LoadWeightsFromFile(const char * path)
 {
-	return neuralnetworkbase::LoadWeightsFromFile(Base, path);
+	return Base.LoadWeightsFromFile(path);
 }
 
 const MatrixXf & NARXNN::Evaluate(const vector<float> & input)
 {
-	return neuralnetworkbase::FeedForward(Base, input, 0.f);
+	return Base.FeedForward(input, 0.f);
 }
 
 void NARXNN::Generate(const char * path, vector<unsigned char> & feed, const int count)
@@ -134,10 +134,10 @@ void NARXNN::Train()
 	const int inputSize = (int)Data.size() - 1;
 
 	if (inputSize != Base.Index.size())
-		neuralnetworkbase::InitializeIndexVector(Base, inputSize);
+		Base.InitializeIndexVector(inputSize);
 
 	if (inputSize != Params.BatchSize)
-		neuralnetworkbase::ShuffleIndexVector(Base);
+		Base.ShuffleIndexVector();
 
 	int end = 0;
 	while (end < inputSize)
@@ -150,14 +150,14 @@ void NARXNN::Train()
 			PrepareInput(Base.Index[i]);
 			PrepareTarget(Base.Index[i] + 1);
 
-			neuralnetworkbase::FeedForward(Base, Input, Params.DropOutRate);
-			neuralnetworkbase::BackProp(Base, Target);
+			Base.FeedForward(Input, Params.DropOutRate);
+			Base.Backprop(Target);
 		}
 
-		neuralnetworkbase::AddL1L2(Base, Params.L1, Params.L2);
-		neuralnetworkbase::AddMomentum(Base, Params.Momentum);
-		neuralnetworkbase::UpdateWeights(Base, Params.LearningRate, Params.NormalizeGradient);
+		Base.AddL1L2(Params.L1, Params.L2);
+		Base.AddMomentum(Params.Momentum);
+		Base.UpdateWeights(Params.LearningRate, Params.NormalizeGradient);
 
-		neuralnetworkbase::ZeroGradAndSwap(Base);
+		Base.ZeroGradAndSwap();
 	}
 }

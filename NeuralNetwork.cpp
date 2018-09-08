@@ -13,12 +13,12 @@ NeuralNetwork::NeuralNetwork(const vector<int> topology, const int ThreadCount)
 
 void NeuralNetwork::Initialize(const vector<int> topology, const int ThreadCount)
 {
-	neuralnetworkbase::InitializeBase(Base, topology, ThreadCount);
+	Base.InitializeBase(topology, ThreadCount);
 }
 
 const MatrixXf & NeuralNetwork::Evaluate(const vector<float> & input)
 {
-	return neuralnetworkbase::FeedForward(Base, input, 0.f);
+	return Base.FeedForward(input, 0.f);
 }
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
@@ -64,12 +64,12 @@ float NeuralNetwork::Accuracy(const vector<vector<float>> & inputs, const vector
 
 bool NeuralNetwork::WriteWeightsToFile(const char * path) const
 {
-	return neuralnetworkbase::WriteWeightsToFile(Base, path);
+	return Base.WriteWeightsToFile( path);
 }
 
 bool NeuralNetwork::LoadWeightsFromFile(const char * path)
 {
-	return neuralnetworkbase::LoadWeightsFromFile(Base, path);
+	return Base.LoadWeightsFromFile(path);
 }
 
 void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vector<float>> & targets)
@@ -77,10 +77,10 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 	const int inputSize = (int)inputs.size();
 
 	if (inputSize != Base.Index.size())
-		neuralnetworkbase::InitializeIndexVector(Base, inputSize);
+		Base.InitializeIndexVector(inputSize);
 
 	if (inputSize != Params.BatchSize)
-		neuralnetworkbase::ShuffleIndexVector(Base);
+		Base.ShuffleIndexVector();
 
 	int end = 0;
 	while (end < inputSize)
@@ -90,14 +90,14 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 
 		for (int i = start; i < end; i++)
 		{
-			neuralnetworkbase::FeedForward(Base, inputs[Base.Index[i]], Params.DropOutRate);
-			neuralnetworkbase::BackProp(Base, targets[Base.Index[i]]);
+			Base.FeedForward(inputs[Base.Index[i]], Params.DropOutRate);
+			Base.Backprop(targets[Base.Index[i]]);
 		}
 
-		neuralnetworkbase::AddL1L2(Base, Params.L1, Params.L2);
-		neuralnetworkbase::AddMomentum(Base, Params.Momentum);
-		neuralnetworkbase::UpdateWeights(Base, Params.LearningRate, Params.NormalizeGradient);
+		Base.AddL1L2(Params.L1, Params.L2);
+		Base.AddMomentum(Params.Momentum);
+		Base.UpdateWeights(Params.LearningRate, Params.NormalizeGradient);
 
-		neuralnetworkbase::ZeroGradAndSwap(Base);
+		Base.ZeroGradAndSwap();
 	}
 }
