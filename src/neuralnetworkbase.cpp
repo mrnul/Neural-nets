@@ -346,7 +346,6 @@ namespace neuralnetworkbase
 		//the ID of the vector [0, 0, 0, 1, 0, 0] is 3
 		//ID begins on 0 if maps are empty
 		//else ID is the last + 1
-		file.seekg(1077);
 		int ID = dec.empty() ? 0 : (--dec.end())->first + 1;
 		while (true)
 		{
