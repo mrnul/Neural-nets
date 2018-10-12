@@ -337,16 +337,16 @@ namespace neuralnetworkbase
 			StandarizeVector(data[i]);
 	}
 
-	int OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<unsigned char> & data)
+	bool OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<__int16> & data)
 	{
 		ifstream file(path, std::ios::in | std::ios::binary);
 		if (!file.is_open())
-			return -1;
+			return false;
 
 		//the ID of the vector [0, 0, 0, 1, 0, 0] is 3
 		//ID begins on 0 if maps are empty
 		//else ID is the last + 1
-		file.seekg(46);
+		file.seekg(1077);
 		int ID = dec.empty() ? 0 : (--dec.end())->first + 1;
 		while (true)
 		{
@@ -366,7 +366,9 @@ namespace neuralnetworkbase
 			data.push_back(tmp);
 		}
 
-		return (int)enc.size();
+		//256 means end of file
+		data.push_back(256);
+		return true;
 	}
 
 	int IndexOfMax(const MatrixXf & v)

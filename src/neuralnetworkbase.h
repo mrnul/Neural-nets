@@ -124,8 +124,8 @@ namespace neuralnetworkbase
 	//for each row: Result Row = (Input Row - Mean) / Variance
 	void StandarizeVectors(vector<vector<float>> & data);
 	inline int Sign(const float x) { return (x > 0.0f) - (x < 0.0f); }
-	//loads all data, creates maps for encoding and decoding, returns the number of unique elements
-	int OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<unsigned char> & data);
+	//loads all data, creates maps for encoding and decoding, returns false if file could not open
+	bool OneHotEncDec(const char * path, map<unsigned char, int> & enc, map<int, unsigned char> & dec, vector<__int16> & data);
 	//returns the index of the max element
 	int IndexOfMax(const MatrixXf & v);
 	int IndexOfMax(const vector<float> & v);

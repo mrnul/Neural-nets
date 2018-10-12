@@ -1,6 +1,8 @@
 #pragma once
 
 #include <MyHeaders/neuralnetworkbase.h>
+#include <string>
+using std::string;
 
 class NARXNN
 {
@@ -15,10 +17,10 @@ class NARXNN
 
 		map<unsigned char, int> Enc;
 		map<int, unsigned char> Dec;
-		vector<unsigned char> Data;
+		vector<__int16> Data;
 
 		void ShiftAndAddToInput(const MatrixXf & v);
-		void PrepareInput(const int i);
+		bool PrepareInput(const int i);
 		void PrepareTarget(const int i);
 
 	public:
@@ -26,15 +28,12 @@ class NARXNN
 		neuralnetworkbase::NNParams Params;
 
 		NARXNN();
-
-		//load and insert data from file to Data vector and update Enc - Dec maps
-		void ProcessData(const char * path);
-		int NumUniqueElements();
-		//clear Data, Enc, Dec
-		void ClearData();
-
+		NARXNN(const vector<string> paths, vector<int> topologyHiddenOnly, const unsigned int pastcount, const int ThreadCount = 1);
 		//initialize weights with random numbers ~ U(-r, r) with r = sqrt(12 / (in + out))
-		void Initialize(vector<int> topology, const unsigned int pastcount, const int ThreadCount = 1);
+		void Initialize(const vector<string> paths, vector<int> topologyHiddenOnly, const unsigned int pastcount, const int ThreadCount = 1);
+		int NumOfUniqueElements();
+		//clear Data, Enc, Dec
+		void Clear();
 
 		bool WriteWeightsToFile(const char * path) const;
 		bool LoadWeightsFromFile(const char * path);

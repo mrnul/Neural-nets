@@ -9,21 +9,27 @@ void NARXNN::ShiftAndAddToInput(const MatrixXf & v)
 		Input[i] = v(i - first);
 }
 
-void NARXNN::PrepareInput(const int i)
+bool NARXNN::PrepareInput(const int i)
 {
 	std::fill(Input.begin(), Input.end(), 0.f);
 
 	for (int k = 0, Index = i - PastCount; k <= PastCount; k++, Index++)
 	{
 		if (Index >= 0)
-			Input[k * FeaturesPerInput + Enc[Data[Index]]] = 1.f;
+		{
+			//if there is an "end of file" value, stop
+			if (Data[Index] == 256)
+				return false;
+			Input[k * FeaturesPerInput + Enc[(unsigned char)Data[Index]]] = 1.f;
+		}
 	}
+	return true;
 }
 
 void NARXNN::PrepareTarget(const int i)
 {
 	std::fill(Target.begin(), Target.end(), 0.f);
-	Target[Enc[Data[i]]] = 1.f;
+	Target[Enc[(unsigned char)Data[i]]] = 1.f;
 }
 
 NARXNN::NARXNN()
@@ -31,33 +37,41 @@ NARXNN::NARXNN()
 	std::srand((unsigned int)std::time(0));
 }
 
-void NARXNN::ProcessData(const char * path)
+NARXNN::NARXNN(const vector<string> paths, vector<int> topologyHiddenOnly, const unsigned int pastcount, const int ThreadCount)
 {
-	neuralnetworkbase::OneHotEncDec(path, Enc, Dec, Data);
+	Initialize(paths, topologyHiddenOnly, pastcount, ThreadCount);
 }
 
-int NARXNN::NumUniqueElements()
-{
-	return (int)Enc.size();
-}
-
-void NARXNN::ClearData()
+void NARXNN::Clear()
 {
 	Data.clear();
 	Enc.clear();
 	Dec.clear();
 }
 
-void NARXNN::Initialize(vector<int> topology, const unsigned int pastcount, const int ThreadCount)
+void NARXNN::Initialize(const vector<string> paths, vector<int> topologyHiddenOnly, const unsigned int pastcount, const int ThreadCount)
 {
+	//load all files on memory and create maps
+	for (int i = 0; i < paths.size(); i++)
+		neuralnetworkbase::OneHotEncDec(paths[i].c_str(), Enc, Dec, Data);
+
 	PastCount = pastcount;
-	FeaturesPerInput = topology[0];
+	FeaturesPerInput = (int)Enc.size();
+
+	vector<int> topology(topologyHiddenOnly);
+	//set number of input features
+	topology.insert(topology.begin(), { FeaturesPerInput * (PastCount + 1) });
+	//set number of output features
+	topology.insert(topology.end(), { FeaturesPerInput });
+	
 	Target.resize(FeaturesPerInput);
-
-	topology[0] = topology[0] * (PastCount + 1);
 	Input.resize(topology[0]);
-
 	Base.InitializeBase(topology, ThreadCount);
+}
+
+int NARXNN::NumOfUniqueElements()
+{
+	return (int)Enc.size();
 }
 
 bool NARXNN::WriteWeightsToFile(const char * path) const
@@ -96,8 +110,8 @@ void NARXNN::Generate(const char * path, vector<unsigned char> & feed, const int
 		const unsigned char tmp = Dec[iMax];
 		ofile.write((char*)&tmp, 1);
 
-		//Base.O.back().setZero();
-		//Base.O.back()(iMax) = 1.f;
+		Base.O.back().setZero();
+		Base.O.back()(iMax) = 1.f;
 
 		ShiftAndAddToInput(Base.O.back());
 	}
@@ -147,7 +161,10 @@ void NARXNN::Train()
 
 		for (int i = start; i < end; i++)
 		{
-			PrepareInput(Base.Index[i]);
+			//if there is an "end of file" value, skip the rest
+			if (!PrepareInput(Base.Index[i]))
+				continue;
+
 			PrepareTarget(Base.Index[i] + 1);
 
 			Base.FeedForward(Input, Params.DropOutRate);
