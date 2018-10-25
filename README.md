@@ -7,3 +7,5 @@ A NARXNN was trained using 3 images of landscapes found on google (converted to 
 
 ![alt text](https://raw.githubusercontent.com/mrnul/Neural-nets/master/images/narx_res1.bmp)
 ![alt text](https://raw.githubusercontent.com/mrnul/Neural-nets/master/images/narx_res2.bmp)
+![alt text](https://raw.githubusercontent.com/mrnul/Neural-nets/master/images/narx_res3.bmp)
+![alt text](https://raw.githubusercontent.com/mrnul/Neural-nets/master/images/narx_res4.bmp)
