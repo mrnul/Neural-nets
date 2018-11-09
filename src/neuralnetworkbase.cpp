@@ -57,13 +57,13 @@ namespace neuralnetworkbase
 		std::random_shuffle(Index.begin(), Index.end());
 	}
 
-	void NNBase::ZeroGradAndSwap()
+	void NNBase::SwapAndZeroGrad()
 	{
+		std::swap(Grad, PrevGrad);
+
 		const auto GradSize = Grad.size();
 		for (int l = 1; l < GradSize; l++)
 			Grad[l].setZero();
-
-		std::swap(Grad, PrevGrad);
 	}
 
 	bool NNBase::WriteWeightsToFile(const char * path) const
@@ -171,6 +171,8 @@ namespace neuralnetworkbase
 				tmp = tmp + Grad[i].squaredNorm();
 
 			norm = sqrt(tmp);
+			if (norm < 1e-5)
+				norm = 1.f;
 		}
 
 		const float coeff = rate / norm;
@@ -346,6 +348,7 @@ namespace neuralnetworkbase
 		//the ID of the vector [0, 0, 0, 1, 0, 0] is 3
 		//ID begins on 0 if maps are empty
 		//else ID is the last + 1
+		file.seekg(1077);
 		int ID = dec.empty() ? 0 : (--dec.end())->first + 1;
 		while (true)
 		{

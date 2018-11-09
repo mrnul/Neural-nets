@@ -98,6 +98,6 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 		Base.AddMomentum(Params.Momentum);
 		Base.UpdateWeights(Params.LearningRate, Params.NormalizeGradient);
 
-		Base.ZeroGradAndSwap();
+		Base.SwapAndZeroGrad();
 	}
 }

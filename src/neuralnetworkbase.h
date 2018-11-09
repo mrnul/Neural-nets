@@ -38,7 +38,7 @@ namespace neuralnetworkbase
 		void InitializeBase(vector<int> topology, const int threadCount = 0);
 		void InitializeIndexVector(const int size);
 		void ShuffleIndexVector();
-		void ZeroGradAndSwap();
+		void SwapAndZeroGrad();
 
 		bool WriteWeightsToFile(const char * path) const;
 		bool LoadWeightsFromFile(const char * path);
@@ -63,7 +63,7 @@ namespace neuralnetworkbase
 		int BatchSize;
 		bool NormalizeGradient;
 
-		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0.001f), DropOutRate(0), BatchSize(1), NormalizeGradient(true) {}
+		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0.001f), DropOutRate(0), BatchSize(1), NormalizeGradient(false) {}
 	};
 
 	//Activation functions and their derivatives
