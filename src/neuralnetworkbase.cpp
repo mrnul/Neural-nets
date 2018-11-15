@@ -98,9 +98,9 @@ namespace neuralnetworkbase
 		return true;
 	}
 
-	void NNBase::Dropout(MatrixXf & layer, const float DropOutRate)
+	void NNBase::Dropout(MatrixXf & layer, const float p)
 	{
-		if (DropOutRate == 0.f)
+		if (p == 0.f)
 			return;
 
 		//-1 to ignore last neuron (don't dropout the bias)
@@ -108,12 +108,12 @@ namespace neuralnetworkbase
 		for (int n = 0; n < N; n++)
 		{
 			const float rnd = (float)rand() / RAND_MAX;
-			if (rnd <= DropOutRate)
+			if (rnd <= p)
 				layer(n) = 0.f;
 		}
 	}
 
-	void NNBase::AddL1L2(const float l1, const float l2)
+	void NNBase::AddL1L2(const NNParams & params)
 	{
 		//Grad = Grad + l1term + l2term
 		//don't regularize the bias
@@ -122,80 +122,99 @@ namespace neuralnetworkbase
 		const auto lCount = Grad.size();
 
 		//both l1 and l2
-		if (l1 != 0.f && l2 != 0.f)
+		if (params.L1 != 0.f && params.L2 != 0.f)
 		{
-			#pragma omp parallel for
 			for (int l = 1; l < lCount; l++)
 				Grad[l].topRows(Grad[l].rows() - 1) +=
-				l1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
-				+ l2 * Matrices[l].topRows(Grad[l].rows() - 1);
+				params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
+				+ params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
 		}
 		//only l1
-		else if (l1 != 0.f)
+		else if (params.L1 != 0.f)
 		{
-			#pragma omp parallel for
 			for (int l = 1; l < lCount; l++)
-				Grad[l].topRows(Grad[l].rows() - 1) += l1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
+				Grad[l].topRows(Grad[l].rows() - 1) += params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
 		}
 		//only l2
-		else if (l2 != 0.f)
+		else if (params.L2 != 0.f)
 		{
-			#pragma omp parallel for
 			for (int l = 1; l < lCount; l++)
-				Grad[l].topRows(Grad[l].rows() - 1) += l2 * Matrices[l].topRows(Grad[l].rows() - 1);
+				Grad[l].topRows(Grad[l].rows() - 1) += params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
 		}
 	}
 
-	void NNBase::AddMomentum(const float momentum)
+	void NNBase::AddMomentum(const NNParams & params)
 	{
-		if (momentum == 0.f)
+		if (params.Momentum == 0.f)
 			return;
 
 		const auto lCount = Grad.size();
 		
-		#pragma omp parallel for
 		for (auto l = 0; l < lCount; l++)
-			Grad[l] += PrevGrad[l] * momentum;
+			Grad[l] += PrevGrad[l] *params.Momentum;
 	}
 
-	void NNBase::UpdateWeights(const float rate, const bool NormalizeGrad)
+	void NNBase::UpdateWeights(const NNParams & params)
 	{
 		float norm = 1.f;
-		if (NormalizeGrad)
+		//find the norm of the gradient
+		if (params.NormalizeGradient)
 		{
 			float tmp = 0;
 			const auto size = Grad.size();
 
-			#pragma omp parallel for reduction (+:tmp)
 			for (int i = 0; i < size; i++)
 				tmp = tmp + Grad[i].squaredNorm();
 
 			norm = sqrt(tmp);
-			if (norm < 1e-5)
-				norm = 1.f;
 		}
 
-		const float coeff = rate / norm;
+		const float coeff = params.LearningRate / norm;
 		const auto MatricesSize = Matrices.size();
 
-		#pragma omp parallel for
+		//now each step has a length of 'LearningRate'
 		for (int l = 1; l < MatricesSize; l++)
 			Matrices[l] -= coeff * Grad[l];
+
+		//apply max-norm regularization only if MaxNorm is specified
+		if (params.MaxNorm == 0.f)
+			return;
+
+		//max-norm regularization
+		for (int l = 1; l < MatricesSize; l++)
+		{
+			//column N has the weights of neuron N
+			//find norms of all columns without taking into account their last element (the biase)
+			//should we take into account the biases?
+			const auto norms = Matrices[l].topRows(Matrices[l].rows() - 1).colwise().norm().eval();
+			const auto count = norms.size();
+			//iterate through each norm
+			for (int n = 0; n < count; n++)
+			{
+				//and normalize if norm > MaxNorm
+				if (norms(n) > params.MaxNorm)
+					Matrices[l].topRows(Matrices[l].rows() - 1).col(n) *= params.MaxNorm / norms(n);
+			}
+		}
 	}
 
-	const MatrixXf & NNBase::FeedForward(const vector<float> & input, const float DropOutRate)
+	const MatrixXf & NNBase::Feedforward(const vector<float> & input, const NNParams & params)
 	{
 		std::copy(input.data(), input.data() + input.size(), O[0].data());
 
-		Dropout(O[0], DropOutRate);
+		const int lastDropoutIndex = (int)params.DropoutRates.size() - 1;
+		if (lastDropoutIndex >= 0)
+			Dropout(O[0], params.DropoutRates[0]);
 
-		const auto lastIndex = Matrices.size() - 1;
+		
+		const int lastIndex = (int)Matrices.size() - 1;
 		for (int m = 1; m < lastIndex; m++)
 		{
 			Ex[m].noalias() = O[m - 1] * Matrices[m];
 			O[m].leftCols(O[m].size() - 1) = Ex[m].unaryExpr(&neuralnetworkbase::functions::ELU);
 
-			Dropout(O[m], DropOutRate);
+			if (m <= lastDropoutIndex)
+				Dropout(O[m], params.DropoutRates[m]);
 		}
 
 		Ex[lastIndex].noalias() = O[lastIndex - 1] * Matrices[lastIndex];

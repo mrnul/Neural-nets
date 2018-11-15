@@ -13,6 +13,21 @@ using Eigen::MatrixXf;
 
 namespace neuralnetworkbase
 {
+	struct NNParams
+	{
+		float L1;
+		float L2;
+		float Momentum;
+		float LearningRate;
+		vector<float> DropoutRates;
+		float MaxNorm;
+		int BatchSize;
+		bool NormalizeGradient;
+
+		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0.001f), MaxNorm(0), BatchSize(1), NormalizeGradient(false)
+		{ }
+	};
+
 	//Basic structure with the necessary functions
 	struct NNBase
 	{
@@ -43,27 +58,14 @@ namespace neuralnetworkbase
 		bool WriteWeightsToFile(const char * path) const;
 		bool LoadWeightsFromFile(const char * path);
 
-		void Dropout(MatrixXf & layer, const float DropOutRate);
-		void AddL1L2(const float l1, const float l2);
-		void AddMomentum(const float momentum);
-		void UpdateWeights(const float rate, const bool NormalizeGrad);
+		void Dropout(MatrixXf & layer, const float p);
+		void AddL1L2(const NNParams & params);
+		void AddMomentum(const NNParams & params);
+		void UpdateWeights(const NNParams & params);
 
 		//returns the output o.back()
-		const MatrixXf & FeedForward(const vector<float> & input, const float DropOutRate);
+		const MatrixXf & Feedforward(const vector<float> & input, const NNParams & params);
 		void Backprop(const vector<float> & target);
-	};
-
-	struct NNParams
-	{
-		float L1;
-		float L2;
-		float Momentum;
-		float LearningRate;
-		float DropOutRate;
-		int BatchSize;
-		bool NormalizeGradient;
-
-		NNParams() : L1(0), L2(0), Momentum(0), LearningRate(0.001f), DropOutRate(0), BatchSize(1), NormalizeGradient(false) {}
 	};
 
 	//Activation functions and their derivatives

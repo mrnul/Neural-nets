@@ -18,7 +18,8 @@ void NeuralNetwork::Initialize(const vector<int> topology, const int ThreadCount
 
 const MatrixXf & NeuralNetwork::Evaluate(const vector<float> & input)
 {
-	return Base.FeedForward(input, 0.f);
+	//evaluate is feedforward with default parameters
+	return Base.Feedforward(input, neuralnetworkbase::NNParams());
 }
 
 float NeuralNetwork::SquareError(const vector<vector<float>> & inputs, const vector<vector<float>> & targets, const float CutOff)
@@ -90,13 +91,13 @@ void NeuralNetwork::Train(const vector<vector<float>> & inputs, const vector<vec
 
 		for (int i = start; i < end; i++)
 		{
-			Base.FeedForward(inputs[Base.Index[i]], Params.DropOutRate);
+			Base.Feedforward(inputs[Base.Index[i]], Params);
 			Base.Backprop(targets[Base.Index[i]]);
 		}
 
-		Base.AddL1L2(Params.L1, Params.L2);
-		Base.AddMomentum(Params.Momentum);
-		Base.UpdateWeights(Params.LearningRate, Params.NormalizeGradient);
+		Base.AddL1L2(Params);
+		Base.AddMomentum(Params);
+		Base.UpdateWeights(Params);
 
 		Base.SwapAndZeroGrad();
 	}
