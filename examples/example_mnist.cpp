@@ -1,5 +1,4 @@
 #include <MyHeaders/NeuralNetwork.h>
-#include <Windows.h>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -51,11 +50,13 @@ int main()
 	neuralnetworkbase::StandarizeVectors(data);
 	neuralnetworkbase::StandarizeVectors(testdata);
 
-	NeuralNetwork nn({ 784 , 250, 250, 10 }, 2);
+	NeuralNetwork nn({ 784 , 300, 300, 10 }, 2);
 
-	nn.Params.BatchSize = 100;
-	nn.Params.LearningRate = 0.1f;
-	nn.Params.Momentum = 0.8f;
+	nn.Params.BatchSize = 500;
+	nn.Params.LearningRate = 0.2f;
+	nn.Params.Momentum = 0.95f;
+	//nn.Params.L1 = 0.01f;
+	//nn.Params.L2 = 0.5f;
 	nn.Params.DropOutRate = 0.2f;
 	nn.Params.NormalizeGradient = true;
 
@@ -63,13 +64,16 @@ int main()
 	while (true)
 	{
 		nn.Train(data, targets);
-		nn.Params.LearningRate *= 0.95f;
 		epoch++;
 
-		std::cout << nn.SquareError(data, targets)
-			<< "\tIn:" << nn.Accuracy(data, targets)
-			<< "\tOut:" << nn.Accuracy(testdata, testtargets)
+		std::cout
+			<< nn.SquareError(data, targets)
+			<< "\tTrain:" << nn.Accuracy(data, targets)
+			<< "\tTest:" << nn.Accuracy(testdata, testtargets)
 			<< "\tEpoch:" << epoch
+			<< "\tLR:" << nn.Params.LearningRate
 			<< std::endl;
+
+		nn.Params.LearningRate *= 0.95f;
 	}
 }
