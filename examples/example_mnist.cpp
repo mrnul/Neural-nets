@@ -57,7 +57,8 @@ int main()
 	nn.Params.Momentum = 0.95f;
 	//nn.Params.L1 = 0.01f;
 	//nn.Params.L2 = 0.5f;
-	nn.Params.DropOutRate = 0.2f;
+	//nn.Params.MaxNorm = 3.f;
+	nn.Params.DropOutRate = {0.2f, 0.2f, 0.2f}; //dropout for each layer (last layer cannot have dropout)
 	nn.Params.NormalizeGradient = true;
 
 	int epoch = 0;
