@@ -2,15 +2,12 @@
 
 namespace neuralnetworkbase
 {
-	void NNBase::InitializeBase(vector<int> topology, const int threadCount)
+	void NNBase::InitializeBase(vector<int> topology)
 	{
 		const auto numOfLayers = topology.size();
 		const auto lastIndex = numOfLayers - 1;
 
-		#ifdef _OPENMP
-		if (threadCount)
-			omp_set_num_threads(threadCount);
-		#endif
+		Topology = topology;
 
 		D.resize(numOfLayers);
 		Ex.resize(numOfLayers);
@@ -100,58 +97,17 @@ namespace neuralnetworkbase
 
 	void NNBase::Dropout(MatrixXf & layer, const float p)
 	{
-		if (p == 0.f)
-			return;
-
-		//-1 to ignore last neuron (don't dropout the bias)
-		const auto N = layer.size() - 1;
-		for (int n = 0; n < N; n++)
-		{
-			const float rnd = (float)rand() / RAND_MAX;
-			if (rnd <= p)
-				layer(n) = 0.f;
-		}
+		RawDropout(layer, p);
 	}
 
 	void NNBase::AddL1L2(const NNParams & params)
 	{
-		//Grad = Grad + l1term + l2term
-		//don't regularize the bias
-		//topRows(Grad[l].rows() - 1) skips the last row (the biases)
-
-		const auto lCount = Grad.size();
-
-		//both l1 and l2
-		if (params.L1 != 0.f && params.L2 != 0.f)
-		{
-			for (int l = 1; l < lCount; l++)
-				Grad[l].topRows(Grad[l].rows() - 1) +=
-				params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
-				+ params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
-		}
-		//only l1
-		else if (params.L1 != 0.f)
-		{
-			for (int l = 1; l < lCount; l++)
-				Grad[l].topRows(Grad[l].rows() - 1) += params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
-		}
-		//only l2
-		else if (params.L2 != 0.f)
-		{
-			for (int l = 1; l < lCount; l++)
-				Grad[l].topRows(Grad[l].rows() - 1) += params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
-		}
+		RawAddL1L2(Matrices, Grad, params);
 	}
 
 	void NNBase::AddMomentum(const NNParams & params)
 	{
-		if (params.Momentum == 0.f)
-			return;
-
-		const auto lCount = Grad.size();
-		
-		for (auto l = 0; l < lCount; l++)
-			Grad[l] += PrevGrad[l] *params.Momentum;
+		RawAddMomentum(Grad, PrevGrad, params);
 	}
 
 	void NNBase::UpdateWeights(const NNParams & params)
@@ -164,7 +120,7 @@ namespace neuralnetworkbase
 			const auto size = Grad.size();
 
 			for (int i = 0; i < size; i++)
-				tmp = tmp + Grad[i].squaredNorm();
+				tmp += Grad[i].squaredNorm();
 
 			norm = sqrt(tmp);
 		}
@@ -200,13 +156,79 @@ namespace neuralnetworkbase
 
 	const MatrixXf & NNBase::Feedforward(const vector<float> & input, const NNParams & params)
 	{
+		return RawFeedforward(Matrices, Ex, O, input, params);
+	}
+
+	void NNBase::Backprop(const vector<float> & target)
+	{
+		RawBackprop(Matrices, Ex, O, D, Grad, target);
+	}
+
+	void RawDropout(MatrixXf & layer, const float p)
+	{
+		if (p == 0.f)
+			return;
+
+		//-1 to ignore last neuron (don't dropout the bias)
+		const auto N = layer.size() - 1;
+		for (int n = 0; n < N; n++)
+		{
+			const float rnd = (float)rand() / RAND_MAX;
+			if (rnd <= p)
+				layer(n) = 0.f;
+		}
+	}
+
+	void RawAddL1L2(const vector<MatrixXf> & Matrices, vector<MatrixXf> & Grad, const NNParams & params)
+	{
+		//Grad = Grad + l1term + l2term
+		//don't regularize the bias
+		//topRows(Grad[l].rows() - 1) skips the last row (the biases)
+
+		const auto lCount = Grad.size();
+
+		//both l1 and l2
+		if (params.L1 != 0.f && params.L2 != 0.f)
+		{
+			for (int l = 1; l < lCount; l++)
+				Grad[l].topRows(Grad[l].rows() - 1) +=
+				params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign)
+				+ params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
+		}
+		//only l1
+		else if (params.L1 != 0.f)
+		{
+			for (int l = 1; l < lCount; l++)
+				Grad[l].topRows(Grad[l].rows() - 1) += params.L1 * Matrices[l].topRows(Grad[l].rows() - 1).unaryExpr(&Sign);
+		}
+		//only l2
+		else if (params.L2 != 0.f)
+		{
+			for (int l = 1; l < lCount; l++)
+				Grad[l].topRows(Grad[l].rows() - 1) += params.L2 * Matrices[l].topRows(Grad[l].rows() - 1);
+		}
+	}
+
+	void RawAddMomentum(vector<MatrixXf> & Grad, const vector<MatrixXf> & PrevGrad, const NNParams & params)
+	{
+		if (params.Momentum == 0.f)
+			return;
+
+		const auto lCount = Grad.size();
+		for (auto l = 0; l < lCount; l++)
+			Grad[l] += PrevGrad[l] * params.Momentum;
+	}
+
+	const MatrixXf & RawFeedforward(const vector<MatrixXf> & Matrices, vector<MatrixXf> & Ex, vector<MatrixXf> & O,
+		const vector<float> & input, const NNParams & params)
+	{
 		std::copy(input.data(), input.data() + input.size(), O[0].data());
 
 		const int lastDropoutIndex = (int)params.DropoutRates.size() - 1;
 		if (lastDropoutIndex >= 0)
-			Dropout(O[0], params.DropoutRates[0]);
+			RawDropout(O[0], params.DropoutRates[0]);
 
-		
+
 		const int lastIndex = (int)Matrices.size() - 1;
 		for (int m = 1; m < lastIndex; m++)
 		{
@@ -214,7 +236,7 @@ namespace neuralnetworkbase
 			O[m].leftCols(O[m].size() - 1) = Ex[m].unaryExpr(&neuralnetworkbase::functions::ELU);
 
 			if (m <= lastDropoutIndex)
-				Dropout(O[m], params.DropoutRates[m]);
+				RawDropout(O[m], params.DropoutRates[m]);
 		}
 
 		Ex[lastIndex].noalias() = O[lastIndex - 1] * Matrices[lastIndex];
@@ -223,7 +245,8 @@ namespace neuralnetworkbase
 		return O.back();
 	}
 
-	void NNBase::Backprop(const vector<float> & target)
+	void RawBackprop(const vector<MatrixXf> & Matrices, const vector<MatrixXf> & Ex, const vector<MatrixXf> & O, vector<MatrixXf> & D, vector<MatrixXf> & Grad,
+		const vector<float> & target)
 	{
 		const auto L = D.size() - 1;
 		const auto outSize = O[L].size();
@@ -375,7 +398,7 @@ namespace neuralnetworkbase
 			if (!file.read((char *)&tmp, 1))
 				break;
 
-			//if element does not exist in maps add it
+			//if element does not exist in maps, add it
 			if (enc.find(tmp) == enc.end())
 			{
 				enc[tmp] = ID;

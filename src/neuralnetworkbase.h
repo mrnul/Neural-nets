@@ -50,7 +50,9 @@ namespace neuralnetworkbase
 		//index vector to shuffle inputs
 		vector<int> Index;
 
-		void InitializeBase(vector<int> topology, const int threadCount = 0);
+		vector<int> Topology;
+
+		void InitializeBase(vector<int> topology);
 		void InitializeIndexVector(const int size);
 		void ShuffleIndexVector();
 		void SwapAndZeroGrad();
@@ -114,6 +116,15 @@ namespace neuralnetworkbase
 			return sm * (1.f - sm);
 		}
 	}
+
+	//Raw functions
+	void RawDropout(MatrixXf & layer, const float p);
+	void RawAddL1L2(const vector<MatrixXf> & Matrices, vector<MatrixXf> & Grad, const NNParams & params);
+	void RawAddMomentum(vector<MatrixXf> & Grad, const vector<MatrixXf> & PrevGrad, const NNParams & params);
+	const MatrixXf & RawFeedforward(const vector<MatrixXf> & Matrices, vector<MatrixXf> & Ex, vector<MatrixXf> & O,
+		const vector<float> & input, const NNParams & params);
+	void RawBackprop(const vector<MatrixXf> & Matrices, const vector<MatrixXf> & Ex, const vector<MatrixXf> & O, vector<MatrixXf> & D, vector<MatrixXf> & Grad,
+		const vector<float> & target);
 
 	//each element is scaled in [a,b]
 	void NormalizeVector(vector<float> & vec, const float a = 0.1f, const float b = 0.9f);
