@@ -50,14 +50,14 @@ int main()
 	neuralnetworkbase::StandarizeVectors(data);
 	neuralnetworkbase::StandarizeVectors(testdata);
 
-	NeuralNetwork nn({ 784 , 300, 300, 10 }, 2);
+	NeuralNetwork nn({ 784 , 500 , 300 , 10 }, thread::hardware_concurrency());
 
 	nn.Params.BatchSize = 500;
 	nn.Params.LearningRate = 0.2f;
 	nn.Params.Momentum = 0.95f;
 	//nn.Params.L1 = 0.01f;
 	//nn.Params.L2 = 0.5f;
-	nn.Params.DropoutRates = { 0.2f, 0.2f, 0.2f }; // dropout rate for each layer (don't apply drop out to the last layer)
+	nn.Params.DropoutRates = { 0.3f, 0.3f, 0.2f };
 	//nn.Params.MaxNorm = 3.f;
 	nn.Params.NormalizeGradient = true;
 
@@ -69,7 +69,7 @@ int main()
 
 		std::cout
 			<< nn.SquareError(data, targets)
-			<< "\tTrain:" << nn.Accuracy(data, targets)
+			//<< "\tTrain:" << nn.Accuracy(data, targets)
 			<< "\tTest:" << nn.Accuracy(testdata, testtargets)
 			<< "\tEpoch:" << epoch
 			<< "\tLR:" << nn.Params.LearningRate
