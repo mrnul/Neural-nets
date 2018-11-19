@@ -17,16 +17,13 @@ struct TData
 	int Start;
 	int End;
 
-	mutex mtJobDone;
 	mutex mtWakeUp;
-	condition_variable cvJobDone;
 	condition_variable cvWakeUp;
 
-	bool JobDone;
 	bool WakeUp;
 	bool MustQuit;
 
-	TData() :JobDone(false), WakeUp(false), MustQuit(false)
+	TData() : WakeUp(false), MustQuit(false)
 	{}
 };
 
